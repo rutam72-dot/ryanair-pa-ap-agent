@@ -1,0 +1,59 @@
+name: Ryanair PA AP monitor
+on:
+  schedule:
+    # Run hourly in UTC, execute only at 00/04/08/12/16/20 Europe/Warsaw.
+    # This handles both CET and CEST without a seasonal manual edit.
+    - cron: '7 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: ryanair-pa-ap-monitor
+  cancel-in-progress: false
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check local schedule
+        id: clock
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          hour = datetime.now(ZoneInfo("Europe/Warsaw")).hour
+          allowed = os.environ["EVENT_NAME"] == "workflow_dispatch" or hour in (0, 4, 8, 12, 16, 20)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"run={'true' if allowed else 'false'}\n")
+          print(f"Poland hour: {hour}; run: {allowed}")
+          PY
+      - name: Run unit tests
+        if: steps.clock.outputs.run == 'true'
+        run: python -m unittest discover -s tests -v
+      - name: Fetch confirmed fares and update local history
+        if: steps.clock.outputs.run == 'true'
+        run: python monitor.py
+      - name: Commit updated history
+        if: steps.clock.outputs.run == 'true'
+        run: |
+          if [ -f state/history.json ] && ! git diff --quiet -- state/history.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/history.json
+            git commit -m "Update confirmed Ryanair fare history"
+            git push
+          elif [ -f state/history.json ] && ! git ls-files --error-unmatch state/history.json >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/history.json
+            git commit -m "Initialize confirmed Ryanair fare history"
+            git push
+          fi
