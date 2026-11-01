@@ -11,6 +11,7 @@ from agent import Fare
 from alerts import alert
 from ryanair_client import fetch_fares, RyanairReadError
 from ryanair_schedule import fetch_schedule, report_coverage, ScheduleReadError
+from fare_retries import retry_missing
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
 HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "180"))
@@ -67,6 +68,9 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
         except (RyanairReadError, OSError, ValueError) as exc:
             print(f"{route}: Nie odczytano z Ryanair ({exc})")
             continue
+        if route in schedules:
+            recovered = retry_missing(route, schedules[route], history, today, fetcher=fetcher)
+            fares = list(fares) + recovered
         history, new_notices = compare_and_store(history, fares, today)
         successes += 1
         notices.extend(new_notices)
