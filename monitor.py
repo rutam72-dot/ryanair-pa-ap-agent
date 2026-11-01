@@ -1,15 +1,18 @@
-"""Persist last confirmed Ryanair fares; never invent prices or calendar events."""
+"""Monitor Ryanair fares with durable history. No Google Calendar writes."""
 import json
 import os
 from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
+from zoneinfo import ZoneInfo
+from datetime import datetime
 
 from agent import Fare
 from alerts import alert
 from ryanair_client import fetch_fares, RyanairReadError
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
+HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "180"))
 
 def key(fare):
     return f"{fare.route}:{fare.departure_date.isoformat()}"
@@ -39,31 +42,31 @@ def compare_and_store(history, fares, today):
     return updated, notifications
 
 def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
-    today = today or date.today()
-    horizon = today + timedelta(days=30)
+    today = today or datetime.now(ZoneInfo("Europe/Warsaw")).date()
+    horizon = today + timedelta(days=HORIZON_DAYS)
     history = load_history(path)
-    all_notices = []
-    successful = 0
+    notices = []
+    successes = 0
     for route in ("PA", "AP"):
         try:
             fares = fetcher(route, today, horizon)
         except (RyanairReadError, OSError, ValueError) as exc:
             print(f"{route}: Nie odczytano z Ryanair ({exc})")
             continue
-        history, notices = compare_and_store(history, fares, today)
-        successful += 1
-        all_notices.extend(notices)
-        print(f"{route}: confirmed {len(fares)} fares")
-    if successful:
+        history, new_notices = compare_and_store(history, fares, today)
+        successes += 1
+        notices.extend(new_notices)
+        print(f"{route}: {len(fares)} dates returned, {len([f for f in fares if f.price_pln is not None])} confirmed prices")
+    if successes:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temp = path.with_suffix(".tmp")
-        temp.write_text(json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        temp.replace(path)
-    for notice in all_notices:
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temporary.replace(path)
+    for notice in notices:
         print(json.dumps(notice, ensure_ascii=False))
-    if not successful:
-        raise SystemExit("No confirmed Ryanair response; no history update")
-    return all_notices
+    if not successes:
+        raise SystemExit("No Ryanair response confirmed; history unchanged")
+    return notices
 
 if __name__ == "__main__":
     run()
