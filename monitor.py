@@ -10,6 +10,7 @@ from datetime import datetime
 from agent import Fare
 from alerts import alert
 from ryanair_client import fetch_fares, RyanairReadError
+from ryanair_schedule import fetch_schedule, report_coverage, ScheduleReadError
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
 HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "180"))
@@ -47,6 +48,19 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
     history = load_history(path)
     notices = []
     successes = 0
+    # Timetable and fare data are independent. A missing fare is not a missing flight.
+    schedules = {}
+    for route in ("PA", "AP"):
+        try:
+            schedules[route] = fetch_schedule(route, today, horizon)
+            print(f"{route}: timetable lists {len(schedules[route])} flight dates")
+        except (ScheduleReadError, OSError, ValueError) as exc:
+            print(f"{route}: Nie odczytano rozkladu Ryanair ({exc}); existing fares preserved")
+    if schedules:
+        coverage = report_coverage(history, schedules)
+        for route, stats in coverage.items():
+            print(f"{route}: schedule={stats['scheduled']} already_priced={stats['priced']} missing_prices={len(stats['missing_price'])}")
+            print(f"{route}: dates without confirmed prices: {','.join(stats['missing_price'])}")
     for route in ("PA", "AP"):
         try:
             fares = fetcher(route, today, horizon)
