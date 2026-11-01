@@ -47,6 +47,13 @@ function fetchHistory_() {
 function priceLabel_(value) {
   return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);
 }
+function fareColor_(price) {
+  if (price <= 200) return CalendarApp.EventColor.GREEN;
+  if (price <= 400) return CalendarApp.EventColor.BLUE;
+  if (price <= 600) return CalendarApp.EventColor.YELLOW;
+  if (price <= 800) return CalendarApp.EventColor.ORANGE;
+  return CalendarApp.EventColor.RED;
+}
 function marker_(kind, key, observed) {
   return '[' + CONFIG.TAG + '|' + kind + '|' + key + (observed ? '|' + observed : '') + ']';
 }
@@ -64,12 +71,18 @@ function syncOne_(calendar, key, price, changes, observed, stats) {
   if (existing.length > 1) stats.duplicates += existing.length - 1;
   if (existing.length === 0) {
     stats.inserts++;
-    if (!CONFIG.DRY_RUN) calendar.createAllDayEvent(title, parseDate_(day), {
-      description: marker + '\nRyanair PLN; monitoring ceny, nie rezerwacja.'
-    });
-  } else if (existing[0].getTitle() !== title) {
-    stats.updates++;
-    if (!CONFIG.DRY_RUN) existing[0].setTitle(title);
+    if (!CONFIG.DRY_RUN) {
+      const event = calendar.createAllDayEvent(title, parseDate_(day), {
+        description: marker + '\\nRyanair PLN; monitoring ceny, nie rezerwacja.'
+      });
+      event.setColor(fareColor_(price));
+    }
+  } else {
+    if (existing[0].getTitle() !== title) {
+      stats.updates++;
+      if (!CONFIG.DRY_RUN) existing[0].setTitle(title);
+    }
+    if (!CONFIG.DRY_RUN) existing[0].setColor(fareColor_(price));
   }
   if (!changes[key]) return;
   const change = changes[key];
