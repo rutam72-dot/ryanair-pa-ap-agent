@@ -65,6 +65,39 @@ def compare_and_store(history, fares, today):
         updated[k] = str(fare.price_pln)
     return updated, notifications
 
+
+# Receipts are accepted only after the ChatGPT calendar writer verifies each
+# event on all three calendars. No receipt is inferred from a GitHub run.
+REQUIRED_CALENDARS = ("rutam72@gmail.com", "b.prokglock@gmail.com", "ryanairsamolot@gmail.com")
+
+def acknowledge_alerts(history_path, receipts, verifier=None):
+    """Remove only IDs independently verified on all required calendars.
+
+    receipts: mapping change_id -> mapping calendar_id -> Google event ID.
+    verifier(calendar_id, event_id, change_id) must return True after checking
+    the actual calendar event's private change_id, route and date. Fail closed.
+    """
+    if verifier is None:
+        raise ValueError("An independent calendar event verifier is required")
+    path = pending_path(history_path)
+    pending = load_pending(path)
+    if not isinstance(receipts, dict):
+        raise ValueError("Receipts must be a mapping")
+    acknowledged = set()
+    for notice in pending:
+        change_id = notice["change_id"]
+        by_calendar = receipts.get(change_id)
+        if not isinstance(by_calendar, dict) or set(by_calendar) != set(REQUIRED_CALENDARS):
+            continue
+        if not all(isinstance(by_calendar[calendar], str) and by_calendar[calendar]
+                   and verifier(calendar, by_calendar[calendar], change_id)
+                   for calendar in REQUIRED_CALENDARS):
+            continue
+        acknowledged.add(change_id)
+    if acknowledged:
+        save_pending(path, [notice for notice in pending if notice["change_id"] not in acknowledged])
+    return sorted(acknowledged)
+
 def save_recent_verifications(fares, today, path=LATEST_PATH):
     """Record the observation time per day; old history is NOT a fresh quote."""
     if not fares:
