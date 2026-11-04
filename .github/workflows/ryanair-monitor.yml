@@ -4,6 +4,9 @@ on:
     - cron: '7 0,4,8,12,16,20 * * *'
       timezone: 'Europe/Warsaw'
   workflow_dispatch:
+  push:
+    paths:
+      - 'state/monitor-test-trigger.txt'
 permissions:
   contents: write
 concurrency:
@@ -21,12 +24,10 @@ jobs:
           python-version: '3.12'
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
-      - name: Fetch confirmed fares and update Google calendars
+      - name: Fetch confirmed Ryanair fares (calendar writes by ChatGPT)
         env:
           RYANAIR_HORIZON_DAYS: "365"
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CALENDAR_SYNC_ENABLED: "0"
         run: python monitor.py
       - name: Commit confirmed fare history and observation times
         if: ${{ always() }}
