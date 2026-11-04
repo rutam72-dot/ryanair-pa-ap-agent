@@ -154,7 +154,7 @@ def alert_payload(notice, now):
         "colorId": "10" if notice["direction"] == "down" else "11",
         "start": {"date": day}, "end": {"date": (date.fromisoformat(day) + timedelta(days=1)).isoformat()},
         "transparency": "transparent", "reminders": {"useDefault": False, "overrides": []},
-        "extendedProperties": {"private": {"managed_by": MARKER, "route": route, "kind": "alert"}},
+        "extendedProperties": {"private": {"managed_by": MARKER, "route": route, "kind": "alert", "change_id": notice.get("change_id", "")}},
     }
 
 def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=60):
@@ -179,6 +179,7 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
     for calendar in CALENDARS:
         events = api.list_events(calendar, today.isoformat(), (today + timedelta(days=366)).isoformat())
         existing, duplicates, combined = {}, [], []
+        known_alert_ids = set()
         for event in events:
             if event.get("status") == "cancelled":
                 continue
@@ -190,6 +191,12 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if kind == "combined":
                 combined.append(event)
                 continue
+            if kind == "alert":
+                change_id = ((event.get("extendedProperties") or {}).get("private") or {}).get("change_id")
+                if change_id:
+                    known_alert_ids.add(change_id)
+                    continue  # Preserve all previously recorded changes.
+                continue  # Do not overwrite or delete legacy alerts.
             key = (kind, route, day)
             if key in existing:
                 duplicates.append(event)
@@ -201,11 +208,13 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if writes >= limit: break
             day, route = notice["date"], notice["route"]
             payload = alert_payload(notice, now)
-            prior = existing.get(("alert", route, day))
-            if prior:
-                api.patch(calendar, prior["id"], payload)
-            else:
-                api.create(calendar, payload)
+            change_id = notice.get("change_id")
+            if not change_id:
+                continue  # Refuse unsafe, non-idempotent alert creation.
+            if change_id in known_alert_ids:
+                continue
+            api.create(calendar, payload)
+            known_alert_ids.add(change_id)
             writes += 1
         for route, day in desired:
             if writes >= limit: break
