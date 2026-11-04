@@ -87,3 +87,19 @@ jobs:
             git commit -m "Update Ryanair prices and run diagnostics"
             git push
           fi
+
+      - name: Deliver and verify durable calendar alerts
+        if: ${{ success() && vars.RYANAIR_CALENDAR_DELIVERY_VERIFIED == '1' }}
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: |
+          python calendar_delivery.py
+          if ! git diff --quiet -- state/pending_alerts.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add state/pending_alerts.json
+            git commit -m "Acknowledge independently verified calendar alerts"
+            git push
+          fi

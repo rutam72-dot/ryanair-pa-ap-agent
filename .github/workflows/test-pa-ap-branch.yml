@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/pa-ap-alerts-dry-run-20261104
+      - feat/verified-calendar-receipts-20261104
   workflow_dispatch:
 jobs:
   unittest:
