@@ -60,12 +60,21 @@ class CalendarSyncTests(unittest.TestCase):
         self.assertEqual(api.calls[0][2], "✈ AP•Nie odczytano z Ryanair")
 
     def test_alert_sign_and_notices(self):
-        notice = {"route": "AP", "date": "2026-11-05", "title": "🔔 AP•−0.01%",
+        notice = {"route": "AP", "date": "2026-11-05", "title": "🔔 AP•0,01%",
                   "direction": "down", "previous_pln": "100", "current_pln": "99.99",
                   "delta_pln": "-0.01"}
         data = alert_payload(notice, self.now)
         self.assertEqual(data["colorId"], "10")
         self.assertEqual(classify(data), ("alert", "AP"))
+
+    def test_two_distinct_alerts_are_preserved_and_idempotent(self):
+        api = FakeApi()
+        base = {"route": "AP", "date": "2026-11-05", "title": "🔔 AP•10,00%",
+                "direction": "down", "previous_pln": "100", "current_pln": "90", "delta_pln": "-10"}
+        notices = [{**base, "change_id": "run1"}, {**base, "change_id": "run2"}]
+        sync_calendars([], {}, notices, self.today, api=api, now=self.now)
+        sync_calendars([], {}, notices, self.today, api=api, now=self.now)
+        self.assertEqual(len([x for x in api.calls if x[0] == "create"]), 6)
 
     def test_legacy_recognized_but_private_not(self):
         self.assertEqual(classify({"summary": "AP1095,56", "description": "Monitoring oferty, Ryanair"}), ("flight", "AP"))
