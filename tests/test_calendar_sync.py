@@ -90,6 +90,28 @@ class CalendarSyncTests(unittest.TestCase):
         self.assertFalse(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-1", "AP", "2026-11-05"))
         self.assertFalse(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-1", "PA", "2026-11-06"))
 
+    def test_retry_after_one_calendar_failure_creates_no_duplicates(self):
+        api = FakeApi()
+        notice = {"route": "PA", "date": "2026-11-05", "title": "🔔 PA•10,00%",
+                  "direction": "down", "previous_pln": "100", "current_pln": "90",
+                  "delta_pln": "-10", "change_id": "failure-1"}
+        class FailOnceApi(FakeApi):
+            def __init__(self):
+                super().__init__()
+                self.failed = False
+            def create(self, calendar, payload):
+                if calendar == CALENDARS[1] and not self.failed:
+                    self.failed = True
+                    raise RuntimeError("Simulated calendar outage")
+                return super().create(calendar, payload)
+        api = FailOnceApi()
+        with self.assertRaises(RuntimeError):
+            sync_calendars([], {}, [notice], self.today, api=api, now=self.now)
+        sync_calendars([], {}, [notice], self.today, api=api, now=self.now)
+        self.assertEqual(len([call for call in api.calls if call[0] == "create"]), 3)
+        for calendar in CALENDARS:
+            self.assertEqual(len(api.events[calendar]), 1)
+
     def test_legacy_recognized_but_private_not(self):
         self.assertEqual(classify({"summary": "AP1095,56", "description": "Monitoring oferty, Ryanair"}), ("flight", "AP"))
         self.assertIsNone(classify({"summary": "AP birthday", "description": "Private"}))
