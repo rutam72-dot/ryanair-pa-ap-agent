@@ -112,7 +112,10 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
     if successes:
         target_latest = latest_path or (LATEST_PATH if path == STATE_PATH else path.with_name("latest_verified.json"))
         save_recent_verifications(fresh_fares, today, target_latest)
-        sync_calendars(fresh_fares, schedules, notices, today)
+        if os.getenv("GOOGLE_CALENDAR_SYNC_ENABLED") == "1":
+            sync_calendars(fresh_fares, schedules, notices, today)
+        else:
+            print("Google Calendar write is owned by the ChatGPT agent; GitHub sync disabled")
     for notice in notices:
         print(json.dumps(notice, ensure_ascii=False))
     if not successes:
