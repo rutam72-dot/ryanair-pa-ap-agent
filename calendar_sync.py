@@ -90,6 +90,8 @@ class GoogleCalendarApi:
         return self.request(calendar, "POST", payload=payload)
     def patch(self, calendar, event_id, payload):
         return self.request(calendar, "PATCH", event_id=event_id, payload=payload)
+    def get_event(self, calendar, event_id):
+        return self.request(calendar, "GET", event_id=event_id)
     def delete(self, calendar, event_id):
         return self.request(calendar, "DELETE", event_id=event_id)
 
@@ -254,3 +256,21 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
                     writes += 1
         print(f"Calendar {calendar}: future flight/alert synchronization attempted; operations verified by API responses")
     return True
+
+
+def verify_alert_receipt(api, calendar, event_id, change_id, route, day):
+    """Read back an alert; fail closed if identity, route, or date differs."""
+    if calendar not in CALENDARS or not event_id or not change_id or route not in ("PA", "AP"):
+        return False
+    try:
+        event = api.get_event(calendar, event_id)
+    except (CalendarSyncError, KeyError, ValueError, OSError):
+        return False
+    private = ((event.get("extendedProperties") or {}).get("private") or {})
+    return (event.get("status") != "cancelled"
+            and private.get("managed_by") == MARKER
+            and private.get("kind") == "alert"
+            and private.get("route") == route
+            and private.get("change_id") == change_id
+            and event_date(event) == day
+            and classify(event) == ("alert", route))
