@@ -16,6 +16,7 @@ from calendar_sync import sync_calendars
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
 HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "365"))
+LATEST_PATH = Path(os.getenv("RYANAIR_LATEST_PATH", "state/latest_verified.json"))
 
 def key(fare):
     return f"{fare.route}:{fare.departure_date.isoformat()}"
@@ -44,7 +45,32 @@ def compare_and_store(history, fares, today):
         updated[k] = str(fare.price_pln)
     return updated, notifications
 
-def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
+def save_recent_verifications(fares, today, path=LATEST_PATH):
+    """Record the observation time per day; old history is NOT a fresh quote."""
+    if not fares:
+        return
+    records = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not isinstance(records, dict):
+        raise ValueError("Latest verified fares must be a JSON object")
+    timestamp = datetime.now(ZoneInfo("Europe/Warsaw")).isoformat(timespec="seconds")
+    records = {k: v for k, v in records.items()
+               if isinstance(v, dict) and k.split(":")[-1] >= today.isoformat()}
+    for fare in fares:
+        if fare.direct and fare.price_pln is not None and fare.departure_date >= today:
+            records[key(fare)] = {
+                "price_pln": str(fare.price_pln),
+                "observed_at": timestamp,
+                "source": "Ryanair unofficial API",
+                "currency": "PLN",
+                "direct": True,
+                "basic_confirmed": False,
+            }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(".tmp")
+    temp.write_text(json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temp.replace(path)
+
+def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None):
     today = today or datetime.now(ZoneInfo("Europe/Warsaw")).date()
     horizon = today + timedelta(days=HORIZON_DAYS)
     history = load_history(path)
@@ -84,6 +110,8 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
         temporary.write_text(json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         temporary.replace(path)
     if successes:
+        target_latest = latest_path or (LATEST_PATH if path == STATE_PATH else path.with_name("latest_verified.json"))
+        save_recent_verifications(fresh_fares, today, target_latest)
         sync_calendars(fresh_fares, schedules, notices, today)
     for notice in notices:
         print(json.dumps(notice, ensure_ascii=False))
