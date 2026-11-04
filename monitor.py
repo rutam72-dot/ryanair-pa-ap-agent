@@ -74,7 +74,7 @@ def acknowledge_alerts(history_path, receipts, verifier=None):
     """Remove only IDs independently verified on all required calendars.
 
     receipts: mapping change_id -> mapping calendar_id -> Google event ID.
-    verifier(calendar_id, event_id, change_id) must return True after checking
+    verifier(calendar_id, event_id, change_id, route, day) must return True after checking
     the actual calendar event's private change_id, route and date. Fail closed.
     """
     if verifier is None:
@@ -90,7 +90,7 @@ def acknowledge_alerts(history_path, receipts, verifier=None):
         if not isinstance(by_calendar, dict) or set(by_calendar) != set(REQUIRED_CALENDARS):
             continue
         if not all(isinstance(by_calendar[calendar], str) and by_calendar[calendar]
-                   and verifier(calendar, by_calendar[calendar], change_id)
+                   and verifier(calendar, by_calendar[calendar], change_id, notice["route"], notice["date"])
                    for calendar in REQUIRED_CALENDARS):
             continue
         acknowledged.add(change_id)
