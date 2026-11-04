@@ -1,4 +1,12 @@
 {
+  "AP:2026-11-06": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "642.0",
+    "source": "Ryanair unofficial API"
+  },
   "AP:2026-11-09": {
     "basic_confirmed": false,
     "currency": "PLN",
@@ -11,8 +19,8 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "555.06",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "533.03",
     "source": "Ryanair unofficial API"
   },
   "AP:2026-11-17": {
@@ -27,7 +35,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "306.41",
     "source": "Ryanair unofficial API"
   },
@@ -35,23 +43,23 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "237.86",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "273.1",
     "source": "Ryanair unofficial API"
   },
   "AP:2026-12-05": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "189.4",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "202.61",
     "source": "Ryanair unofficial API"
   },
   "AP:2026-12-12": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -59,7 +67,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "88.07",
     "source": "Ryanair unofficial API"
   },
@@ -67,7 +75,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "96.88",
     "source": "Ryanair unofficial API"
   },
@@ -75,7 +83,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "180.59",
     "source": "Ryanair unofficial API"
   },
@@ -83,7 +91,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "316.97",
     "source": "Ryanair unofficial API"
   },
@@ -91,7 +99,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -99,7 +107,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "180.95",
     "source": "Ryanair unofficial API"
   },
@@ -107,7 +115,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "121.17",
     "source": "Ryanair unofficial API"
   },
@@ -115,7 +123,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "110.32",
     "source": "Ryanair unofficial API"
   },
@@ -123,7 +131,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "127.97",
     "source": "Ryanair unofficial API"
   },
@@ -131,15 +139,15 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "233.92",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "242.26",
     "source": "Ryanair unofficial API"
   },
   "AP:2027-03-02": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "196.0",
     "source": "Ryanair unofficial API"
   },
@@ -147,7 +155,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "128.58",
     "source": "Ryanair unofficial API"
   },
@@ -155,7 +163,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "203.02",
     "source": "Ryanair unofficial API"
   },
@@ -163,7 +171,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "178.95",
     "source": "Ryanair unofficial API"
   },
@@ -171,7 +179,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "128.58",
     "source": "Ryanair unofficial API"
   },
@@ -179,7 +187,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "419.32",
     "source": "Ryanair unofficial API"
   },
@@ -187,7 +195,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -195,7 +203,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "329.59",
     "source": "Ryanair unofficial API"
   },
@@ -203,7 +211,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "374.9",
     "source": "Ryanair unofficial API"
   },
@@ -211,7 +219,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "302.0",
     "source": "Ryanair unofficial API"
   },
@@ -227,7 +235,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -275,7 +283,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -363,7 +371,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -371,7 +379,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -419,7 +427,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "344.0",
     "source": "Ryanair unofficial API"
   },
@@ -467,7 +475,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -515,7 +523,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "424.11",
     "source": "Ryanair unofficial API"
   },
@@ -563,7 +571,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -611,7 +619,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -659,7 +667,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "477.32",
     "source": "Ryanair unofficial API"
   },
@@ -707,7 +715,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "535.0",
     "source": "Ryanair unofficial API"
   },
@@ -755,7 +763,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "586.0",
     "source": "Ryanair unofficial API"
   },
@@ -803,7 +811,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "642.0",
     "source": "Ryanair unofficial API"
   },
@@ -823,28 +831,164 @@
     "price_pln": "854.0",
     "source": "Ryanair unofficial API"
   },
+  "AP:2027-08-01": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "854.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-02": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "854.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-03": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
   "AP:2027-08-04": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "637.87",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-05": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-06": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-08": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-09": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-10": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
     "source": "Ryanair unofficial API"
   },
   "AP:2027-08-11": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "642.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-12": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-13": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-15": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-16": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-17": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
     "source": "Ryanair unofficial API"
   },
   "AP:2027-08-18": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-19": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "705.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-20": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "778.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-22": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "854.0",
+    "source": "Ryanair unofficial API"
+  },
+  "AP:2027-08-25": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "586.0",
     "source": "Ryanair unofficial API"
   },
   "AP:2027-08-31": {
@@ -859,7 +1003,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
@@ -867,7 +1011,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -875,7 +1019,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
@@ -883,7 +1027,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "535.0",
     "source": "Ryanair unofficial API"
   },
@@ -891,7 +1035,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "586.0",
     "source": "Ryanair unofficial API"
   },
@@ -899,7 +1043,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "535.0",
     "source": "Ryanair unofficial API"
   },
@@ -923,7 +1067,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "586.0",
     "source": "Ryanair unofficial API"
   },
@@ -947,7 +1091,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "586.0",
     "source": "Ryanair unofficial API"
   },
@@ -955,7 +1099,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -963,7 +1107,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
@@ -979,15 +1123,15 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "105.02",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "97.0",
     "source": "Ryanair unofficial API"
   },
   "PA:2026-11-22": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "111.28",
     "source": "Ryanair unofficial API"
   },
@@ -995,15 +1139,15 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "70.45",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "79.26",
     "source": "Ryanair unofficial API"
   },
   "PA:2026-12-06": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -1011,7 +1155,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "96.88",
     "source": "Ryanair unofficial API"
   },
@@ -1027,7 +1171,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "202.61",
     "source": "Ryanair unofficial API"
   },
@@ -1035,7 +1179,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "334.78",
     "source": "Ryanair unofficial API"
   },
@@ -1043,7 +1187,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -1059,7 +1203,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -1067,7 +1211,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "237.86",
     "source": "Ryanair unofficial API"
   },
@@ -1083,7 +1227,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "108.0",
     "source": "Ryanair unofficial API"
   },
@@ -1091,7 +1235,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "136.8",
     "source": "Ryanair unofficial API"
   },
@@ -1099,7 +1243,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "126.16",
     "source": "Ryanair unofficial API"
   },
@@ -1111,12 +1255,36 @@
     "price_pln": "153.3",
     "source": "Ryanair unofficial API"
   },
+  "PA:2027-02-11": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "180.36",
+    "source": "Ryanair unofficial API"
+  },
   "PA:2027-02-19": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
     "observed_at": "2026-11-04T16:56:49+01:00",
     "price_pln": "269.23",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-02-21": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "273.65",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-02-26": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "128.58",
     "source": "Ryanair unofficial API"
   },
   "PA:2027-02-27": {
@@ -1131,15 +1299,15 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
-    "price_pln": "186.19",
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "181.78",
     "source": "Ryanair unofficial API"
   },
   "PA:2027-03-13": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "181.78",
     "source": "Ryanair unofficial API"
   },
@@ -1147,7 +1315,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "162.0",
     "source": "Ryanair unofficial API"
   },
@@ -1155,7 +1323,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "230.0",
     "source": "Ryanair unofficial API"
   },
@@ -1163,7 +1331,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "344.0",
     "source": "Ryanair unofficial API"
   },
@@ -1171,7 +1339,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "264.0",
     "source": "Ryanair unofficial API"
   },
@@ -1187,7 +1355,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "344.0",
     "source": "Ryanair unofficial API"
   },
@@ -1195,7 +1363,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1203,7 +1371,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1251,7 +1419,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1259,7 +1427,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1323,7 +1491,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
@@ -1371,7 +1539,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "535.0",
     "source": "Ryanair unofficial API"
   },
@@ -1443,7 +1611,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1491,7 +1659,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1507,7 +1675,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1555,7 +1723,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1603,7 +1771,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
@@ -1683,7 +1851,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "535.0",
     "source": "Ryanair unofficial API"
   },
@@ -1699,7 +1867,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1747,7 +1915,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1783,35 +1951,163 @@
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
+  "PA:2027-07-28": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-07-29": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "424.11",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-07-30": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-01": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-02": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
+    "source": "Ryanair unofficial API"
+  },
   "PA:2027-08-03": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-04": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
   "PA:2027-08-05": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-06": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-08": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-09": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-10": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-11": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
   "PA:2027-08-12": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-13": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-15": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-16": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-17": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "442.0",
+    "source": "Ryanair unofficial API"
+  },
+  "PA:2027-08-18": {
+    "basic_confirmed": false,
+    "currency": "PLN",
+    "direct": true,
+    "observed_at": "2026-11-04T20:58:22+01:00",
+    "price_pln": "485.0",
     "source": "Ryanair unofficial API"
   },
   "PA:2027-08-19": {
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1819,7 +2115,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1827,7 +2123,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1835,7 +2131,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1843,7 +2139,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1851,7 +2147,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1859,7 +2155,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1875,7 +2171,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1883,7 +2179,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "442.0",
     "source": "Ryanair unofficial API"
   },
@@ -1891,7 +2187,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "391.0",
     "source": "Ryanair unofficial API"
   },
@@ -1899,7 +2195,7 @@
     "basic_confirmed": false,
     "currency": "PLN",
     "direct": true,
-    "observed_at": "2026-11-04T16:56:49+01:00",
+    "observed_at": "2026-11-04T20:58:22+01:00",
     "price_pln": "344.0",
     "source": "Ryanair unofficial API"
   }
