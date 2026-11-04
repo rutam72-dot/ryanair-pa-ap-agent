@@ -12,9 +12,9 @@ def alert(previous: Fare, current: Fare):
     delta = current.price_pln - previous.price_pln
     percent = abs(delta) * Decimal("100") / previous.price_pln
     rounded = percent.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    sign = "−" if direction == "down" else "+"
+    sign = ""
     return {
-        "title": f"🔔 {current.route}•{sign}{rounded:.2f}%",
+        "title": f"🔔 {current.route}•{rounded:.2f}%".replace(".", ","),
         "route": current.route,
         "direction": direction,
         "color": "green" if direction == "down" else "red",
