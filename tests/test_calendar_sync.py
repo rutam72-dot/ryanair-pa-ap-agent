@@ -68,7 +68,7 @@ class CalendarSyncTests(unittest.TestCase):
         self.assertEqual(classify(data), ("alert", "AP"))
 
     def test_legacy_recognized_but_private_not(self):
-        self.assertEqual(classify({"summary": "AP1095,56", "description": "Ryanair"}), ("flight", "AP"))
+        self.assertEqual(classify({"summary": "AP1095,56", "description": "Monitoring oferty, Ryanair"}), ("flight", "AP"))
         self.assertIsNone(classify({"summary": "AP birthday", "description": "Private"}))
 
 if __name__ == "__main__":
