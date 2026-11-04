@@ -90,6 +90,8 @@ class GoogleCalendarApi:
         return self.request(calendar, "POST", payload=payload)
     def patch(self, calendar, event_id, payload):
         return self.request(calendar, "PATCH", event_id=event_id, payload=payload)
+    def get_event(self, calendar, event_id):
+        return self.request(calendar, "GET", event_id=event_id)
     def delete(self, calendar, event_id):
         return self.request(calendar, "DELETE", event_id=event_id)
 
@@ -154,8 +156,12 @@ def alert_payload(notice, now):
         "colorId": "10" if notice["direction"] == "down" else "11",
         "start": {"date": day}, "end": {"date": (date.fromisoformat(day) + timedelta(days=1)).isoformat()},
         "transparency": "transparent", "reminders": {"useDefault": False, "overrides": []},
-        "extendedProperties": {"private": {"managed_by": MARKER, "route": route, "kind": "alert"}},
+        "extendedProperties": {"private": {"managed_by": MARKER, "route": route, "kind": "alert", "change_id": notice.get("change_id", "")}},
     }
+
+def _stable_description(value):
+    """Ignore volatile read time when checking whether an event needs a patch."""
+    return "\n".join(line for line in (value or "").splitlines() if not line.startswith("Odczyt:"))
 
 def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=60):
     """Synchronize confirmed direct flights; keep historical prices if today's read failed.
@@ -179,6 +185,7 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
     for calendar in CALENDARS:
         events = api.list_events(calendar, today.isoformat(), (today + timedelta(days=366)).isoformat())
         existing, duplicates, combined = {}, [], []
+        known_alert_ids = set()
         for event in events:
             if event.get("status") == "cancelled":
                 continue
@@ -190,6 +197,12 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if kind == "combined":
                 combined.append(event)
                 continue
+            if kind == "alert":
+                change_id = ((event.get("extendedProperties") or {}).get("private") or {}).get("change_id")
+                if change_id:
+                    known_alert_ids.add(change_id)
+                    continue  # Preserve all previously recorded changes.
+                continue  # Do not overwrite or delete legacy alerts.
             key = (kind, route, day)
             if key in existing:
                 duplicates.append(event)
@@ -201,11 +214,13 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if writes >= limit: break
             day, route = notice["date"], notice["route"]
             payload = alert_payload(notice, now)
-            prior = existing.get(("alert", route, day))
-            if prior:
-                api.patch(calendar, prior["id"], payload)
-            else:
-                api.create(calendar, payload)
+            change_id = notice.get("change_id")
+            if not change_id:
+                continue  # Refuse unsafe, non-idempotent alert creation.
+            if change_id in known_alert_ids:
+                continue
+            api.create(calendar, payload)
+            known_alert_ids.add(change_id)
             writes += 1
         for route, day in desired:
             if writes >= limit: break
@@ -217,7 +232,10 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if prior:
                 # Avoid rewriting identical fares on all six scheduled checks.
                 marker = ((prior.get("extendedProperties") or {}).get("private") or {})
-                if prior.get("summary") == payload["summary"] and marker.get("managed_by") == MARKER:
+                if (prior.get("summary") == payload["summary"] and prior.get("colorId") == payload["colorId"]
+                        and _stable_description(prior.get("description")) == _stable_description(payload["description"])
+                        and prior.get("start", {}).get("date") == day
+                        and marker.get("managed_by") == MARKER):
                     continue
                 api.patch(calendar, prior["id"], payload)
             else:
@@ -233,8 +251,26 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             old = api.list_events(calendar, "2024-01-01", today.isoformat())
             for item in old:
                 if writes >= limit: break
-                if classify(item) is not None:
+                if classify(item) is not None and classify(item)[0] == "flight":
                     api.delete(calendar, item["id"])
                     writes += 1
         print(f"Calendar {calendar}: future flight/alert synchronization attempted; operations verified by API responses")
     return True
+
+
+def verify_alert_receipt(api, calendar, event_id, change_id, route, day):
+    """Read back an alert; fail closed if identity, route, or date differs."""
+    if calendar not in CALENDARS or not event_id or not change_id or route not in ("PA", "AP"):
+        return False
+    try:
+        event = api.get_event(calendar, event_id)
+    except (CalendarSyncError, KeyError, ValueError, OSError):
+        return False
+    private = ((event.get("extendedProperties") or {}).get("private") or {})
+    return (event.get("status") != "cancelled"
+            and private.get("managed_by") == MARKER
+            and private.get("kind") == "alert"
+            and private.get("route") == route
+            and private.get("change_id") == change_id
+            and event_date(event) == day
+            and classify(event) == ("alert", route))
