@@ -1,11 +1,11 @@
 {
-  "checked_at_warsaw": "2026-11-04T09:22:07+01:00",
+  "checked_at_warsaw": "2026-11-04T12:58:00+01:00",
   "tests": "success",
   "fare_fetch": "success",
-  "fresh_verified_price_count": 165,
+  "fresh_verified_price_count": 200,
   "calendar_write_owner": "ChatGPT",
   "github_calendar_writes_enabled": false,
-  "github_run_id": "41798878594",
+  "github_run_id": "41825117061",
   "github_run_attempt": "1",
   "trigger": "schedule"
 }
