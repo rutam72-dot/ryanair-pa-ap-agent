@@ -41,6 +41,22 @@ class MonitorTests(unittest.TestCase):
             second = json.loads(outbox.read_text(encoding="utf-8"))
             self.assertEqual(first, second)
 
+    def test_crash_after_outbox_write_does_not_duplicate_alert(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            path.write_text(json.dumps({"PA:2026-11-06": "200"}), encoding="utf-8")
+            existing = {"change_id": "original-1", "route": "PA", "date": "2026-11-06",
+                        "previous_pln": "200", "current_pln": "180"}
+            save_pending(pending_path(path), [existing])
+            def fetch(route, start, end):
+                return [Fare("PA", date(2026, 11, 6), Decimal("180"), True)] if route == "PA" else []
+            notices = run(date(2026, 11, 4), path, fetch,
+                          schedule_fetcher=lambda *args: set())
+            self.assertEqual(notices, [])
+            self.assertEqual(load_pending(pending_path(path)), [existing])
+            self.assertEqual(json.loads(path.read_text())["PA:2026-11-06"], "180")
+
     def test_acknowledgement_requires_all_three_verified_receipts(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "history.json"
