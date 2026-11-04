@@ -25,6 +25,22 @@ class MonitorTests(unittest.TestCase):
             run(date(2026, 11, 1), path, fake_fetch, schedule_fetcher=lambda route, start, end: set())
             self.assertTrue((Path(tmp) / "latest_verified.json").exists())
             self.assertIn('"PA:2026-11-06": "199"', path.read_text())
+    def test_pending_alert_survives_following_run_without_ack(self):
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            path.write_text(json.dumps({"PA:2026-11-06": "200"}), encoding="utf-8")
+            def fake_fetch(route, start, end):
+                return [Fare(route, date(2026, 11, 6), Decimal("180"), True)] if route == "PA" else []
+            run(date(2026, 11, 4), path, fake_fetch, schedule_fetcher=lambda *args: set())
+            outbox = path.with_name("pending_alerts.json")
+            first = json.loads(outbox.read_text(encoding="utf-8"))
+            self.assertEqual(len(first), 1)
+            self.assertTrue(first[0]["change_id"])
+            run(date(2026, 11, 4), path, fake_fetch, schedule_fetcher=lambda *args: set())
+            second = json.loads(outbox.read_text(encoding="utf-8"))
+            self.assertEqual(first, second)
+
     def test_timestamped_snapshot_is_source_labeled(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "latest_verified.json"
