@@ -3,3 +3,5 @@ Requested 2026-11-04 for Ryanair PA/AP 6x daily schedule and snapshot tests.
 Calendar writes remain disabled in GitHub Actions; ChatGPT is the sole calendar writer.
 
 Repeat diagnostic trigger after recording status file in workflow.
+
+Regression check: legacy price test fixture corrected; verify CI and fetch.
