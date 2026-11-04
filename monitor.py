@@ -102,6 +102,8 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
         fresh_fares.extend(fares)
         history, new_notices = compare_and_store(history, fares, today)
         successes += 1
+        for index, notice in enumerate(new_notices):
+            notice["change_id"] = f"{datetime.now(ZoneInfo('Europe/Warsaw')).isoformat(timespec='microseconds')}:{notice['route']}:{notice['date']}:{index}"
         notices.extend(new_notices)
         print(f"{route}: {len(fares)} dates returned, {len([f for f in fares if f.price_pln is not None])} confirmed prices")
     if successes:
