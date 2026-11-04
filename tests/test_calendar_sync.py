@@ -3,7 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 from agent import Fare
-from calendar_sync import CALENDARS, classify, sync_calendars, flight_payload, alert_payload
+from calendar_sync import CALENDARS, classify, sync_calendars, flight_payload, alert_payload, verify_alert_receipt
 
 class FakeApi:
     def __init__(self, seeded=None):
@@ -21,6 +21,8 @@ class FakeApi:
         item = next(e for e in self.events[calendar] if e["id"] == event_id)
         item.update(payload)
         return item
+    def get_event(self, calendar, event_id):
+        return next(e for e in self.events[calendar] if e["id"] == event_id)
     def delete(self, calendar, event_id):
         self.calls.append(("delete", calendar, event_id))
         self.events[calendar] = [e for e in self.events[calendar] if e["id"] != event_id]
@@ -75,6 +77,18 @@ class CalendarSyncTests(unittest.TestCase):
         sync_calendars([], {}, notices, self.today, api=api, now=self.now)
         sync_calendars([], {}, notices, self.today, api=api, now=self.now)
         self.assertEqual(len([x for x in api.calls if x[0] == "create"]), 6)
+
+    def test_receipt_requires_matching_route_date_and_change_id(self):
+        api = FakeApi()
+        notice = {"route": "PA", "date": "2026-11-05", "title": "🔔 PA•10,00%",
+                  "direction": "down", "previous_pln": "100", "current_pln": "90",
+                  "delta_pln": "-10", "change_id": "unique-1"}
+        payload = alert_payload(notice, self.now)
+        created = api.create(CALENDARS[0], payload)
+        self.assertTrue(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-1", "PA", "2026-11-05"))
+        self.assertFalse(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-2", "PA", "2026-11-05"))
+        self.assertFalse(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-1", "AP", "2026-11-05"))
+        self.assertFalse(verify_alert_receipt(api, CALENDARS[0], created["id"], "unique-1", "PA", "2026-11-06"))
 
     def test_legacy_recognized_but_private_not(self):
         self.assertEqual(classify({"summary": "AP1095,56", "description": "Monitoring oferty, Ryanair"}), ("flight", "AP"))
