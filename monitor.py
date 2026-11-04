@@ -6,6 +6,7 @@ from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime
+from uuid import uuid4
 
 from agent import Fare
 from alerts import alert
@@ -17,6 +18,25 @@ from calendar_sync import sync_calendars
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
 HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "365"))
 LATEST_PATH = Path(os.getenv("RYANAIR_LATEST_PATH", "state/latest_verified.json"))
+
+# Durable outbox: entries remain pending until a separate calendar writer explicitly acknowledges them.
+def pending_path(history_path):
+    return history_path.with_name("pending_alerts.json")
+
+def load_pending(path):
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, list) or any(not isinstance(x, dict) or not x.get("change_id") for x in data):
+        raise ValueError("Pending alerts must be a list with change_id values")
+    return data
+
+def save_pending(path, notices):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(notices, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
 
 def key(fare):
     return f"{fare.route}:{fare.departure_date.isoformat()}"
@@ -75,6 +95,8 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
     horizon = today + timedelta(days=HORIZON_DAYS)
     history = load_history(path)
     notices = []
+    queue_path = pending_path(path)
+    pending = load_pending(queue_path)
     fresh_fares = []
     successes = 0
     # Timetable and fare data are independent. A missing fare is not a missing flight.
@@ -102,11 +124,16 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
         fresh_fares.extend(fares)
         history, new_notices = compare_and_store(history, fares, today)
         successes += 1
-        for index, notice in enumerate(new_notices):
-            notice["change_id"] = f"{datetime.now(ZoneInfo('Europe/Warsaw')).isoformat(timespec='microseconds')}:{notice['route']}:{notice['date']}:{index}"
+        for notice in new_notices:
+            notice["change_id"] = uuid4().hex
         notices.extend(new_notices)
         print(f"{route}: {len(fares)} dates returned, {len([f for f in fares if f.price_pln is not None])} confirmed prices")
     if successes:
+        # Persist changes before advancing the price baseline. This is an outbox,
+        # not proof of delivery to Google Calendar.
+        if notices:
+            pending.extend(notices)
+            save_pending(queue_path, pending)
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -115,11 +142,13 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
         target_latest = latest_path or (LATEST_PATH if path == STATE_PATH else path.with_name("latest_verified.json"))
         save_recent_verifications(fresh_fares, today, target_latest)
         if os.getenv("GOOGLE_CALENDAR_SYNC_ENABLED") == "1":
-            sync_calendars(fresh_fares, schedules, notices, today)
+            sync_calendars(fresh_fares, schedules, pending, today)
         else:
             print("Google Calendar write is owned by the ChatGPT agent; GitHub sync disabled")
     for notice in notices:
         print(json.dumps(notice, ensure_ascii=False))
+    if pending:
+        print(f"Pending unacknowledged calendar alerts: {len(pending)}; see {queue_path}")
     if not successes:
         raise SystemExit("No Ryanair response confirmed; history unchanged")
     return notices
