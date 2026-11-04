@@ -13,7 +13,7 @@ from alerts import alert
 from ryanair_client import fetch_fares, RyanairReadError
 from ryanair_schedule import fetch_schedule, report_coverage, ScheduleReadError
 from fare_retries import retry_missing
-from calendar_sync import sync_calendars
+from calendar_sync import sync_calendars, verify_alert_receipt
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
 HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "365"))
@@ -97,6 +97,19 @@ def acknowledge_alerts(history_path, receipts, verifier=None):
     if acknowledged:
         save_pending(path, [notice for notice in pending if notice["change_id"] not in acknowledged])
     return sorted(acknowledged)
+
+def acknowledge_verified_calendar_events(history_path, receipts, calendar_api):
+    """Use actual Google Calendar read-back before clearing outbox entries.
+
+    Does not create, update, or delete calendar events. The caller must provide
+    event IDs for all three calendars and an authenticated read-only API.
+    """
+    return acknowledge_alerts(
+        history_path, receipts,
+        verifier=lambda calendar, event_id, change_id, route, day:
+            verify_alert_receipt(calendar_api, calendar, event_id, change_id, route, day),
+    )
+
 
 def save_recent_verifications(fares, today, path=LATEST_PATH):
     """Record the observation time per day; old history is NOT a fresh quote."""
