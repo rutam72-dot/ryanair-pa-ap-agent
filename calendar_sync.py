@@ -226,7 +226,8 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             if prior:
                 # Avoid rewriting identical fares on all six scheduled checks.
                 marker = ((prior.get("extendedProperties") or {}).get("private") or {})
-                if prior.get("summary") == payload["summary"] and marker.get("managed_by") == MARKER:
+                if (prior.get("summary") == payload["summary"] and prior.get("colorId") == payload["colorId"]
+                        and prior.get("description") == payload["description"] and marker.get("managed_by") == MARKER):
                     continue
                 api.patch(calendar, prior["id"], payload)
             else:
@@ -242,7 +243,7 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
             old = api.list_events(calendar, "2024-01-01", today.isoformat())
             for item in old:
                 if writes >= limit: break
-                if classify(item) is not None:
+                if classify(item) is not None and classify(item)[0] == "flight":
                     api.delete(calendar, item["id"])
                     writes += 1
         print(f"Calendar {calendar}: future flight/alert synchronization attempted; operations verified by API responses")
