@@ -48,7 +48,7 @@ class CalendarSyncTests(unittest.TestCase):
         self.assertEqual(len(api.calls), 3)
 
     def test_preserve_existing_price_if_no_fresh_read(self):
-        old = {"id": "x", "summary": "PA199,99", "description": "Ryanair historical price",
+        old = {"id": "x", "summary": "PA199,99", "description": "Monitoring oferty, Ryanair; historical price",
                "start": {"date": "2026-11-05"}}
         api = FakeApi([old])
         sync_calendars([], {"PA": {date(2026, 11, 5)}}, [], self.today, api=api, now=self.now)
