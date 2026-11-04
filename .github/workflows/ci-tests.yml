@@ -1,0 +1,27 @@
+name: Ryanair PA AP unit tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'agent.py'
+      - 'alerts.py'
+      - 'calendar_sync.py'
+      - 'monitor.py'
+      - 'ryanair_client.py'
+      - 'ryanair_schedule.py'
+      - 'fare_retries.py'
+      - 'tests/**'
+      - '.github/workflows/ci-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
