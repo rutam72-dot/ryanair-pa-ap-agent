@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from agent import Fare
-from monitor import compare_and_store, run, save_recent_verifications
+from monitor import compare_and_store, run, save_recent_verifications, acknowledge_alerts, save_pending, pending_path, REQUIRED_CALENDARS, load_pending
 
 class MonitorTests(unittest.TestCase):
     def test_ten_percent_change_and_history(self):
@@ -40,6 +40,26 @@ class MonitorTests(unittest.TestCase):
             run(date(2026, 11, 4), path, fake_fetch, schedule_fetcher=lambda *args: set())
             second = json.loads(outbox.read_text(encoding="utf-8"))
             self.assertEqual(first, second)
+
+    def test_acknowledgement_requires_all_three_verified_receipts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            notice = {"change_id": "change-1", "route": "PA", "date": "2026-11-06"}
+            save_pending(pending_path(path), [notice])
+            receipts = {"change-1": {calendar: "event-" + str(i)
+                                      for i, calendar in enumerate(REQUIRED_CALENDARS)}}
+            self.assertEqual(acknowledge_alerts(path, receipts, verifier=lambda *args: False), [])
+            self.assertEqual(load_pending(pending_path(path)), [notice])
+            self.assertEqual(acknowledge_alerts(path, {"change-1": {REQUIRED_CALENDARS[0]: "event-0"}},
+                                                 verifier=lambda *args: True), [])
+            self.assertEqual(load_pending(pending_path(path)), [notice])
+            self.assertEqual(acknowledge_alerts(path, receipts, verifier=lambda *args: True), ["change-1"])
+            self.assertEqual(load_pending(pending_path(path)), [])
+
+    def test_acknowledgement_refuses_missing_verifier(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(ValueError):
+                acknowledge_alerts(Path(tmp) / "history.json", {})
 
     def test_timestamped_snapshot_is_source_labeled(self):
         with tempfile.TemporaryDirectory() as tmp:
