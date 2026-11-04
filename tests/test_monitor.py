@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from agent import Fare
-from monitor import compare_and_store, run, save_recent_verifications, acknowledge_alerts, save_pending, pending_path, REQUIRED_CALENDARS, load_pending
+from monitor import compare_and_store, run, save_recent_verifications, acknowledge_alerts, save_pending, pending_path, REQUIRED_CALENDARS, load_pending, acknowledge_verified_calendar_events
 
 class MonitorTests(unittest.TestCase):
     def test_ten_percent_change_and_history(self):
@@ -71,6 +71,21 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(load_pending(pending_path(path)), [notice])
             self.assertEqual(acknowledge_alerts(path, receipts, verifier=lambda *args: True), ["change-1"])
             self.assertEqual(load_pending(pending_path(path)), [])
+
+    def test_real_receipt_adapter_refuses_nonmatching_calendar_events(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "history.json"
+            save_pending(pending_path(path), [{"change_id": "c1", "route": "PA", "date": "2026-11-06"}])
+            receipts = {"c1": {calendar: "id1" for calendar in REQUIRED_CALENDARS}}
+            class ReadOnlyApi:
+                def get_event(self, calendar, event_id):
+                    return {"id": event_id, "status": "confirmed", "summary": "🔔 PA•10,00%",
+                            "start": {"date": "2026-11-06"},
+                            "extendedProperties": {"private": {
+                                "managed_by": "ryanair-pa-ap-agent", "kind": "alert",
+                                "route": "PA", "change_id": "WRONG"}}}
+            self.assertEqual(acknowledge_verified_calendar_events(path, receipts, ReadOnlyApi()), [])
+            self.assertEqual(len(load_pending(pending_path(path))), 1)
 
     def test_acknowledgement_refuses_missing_verifier(self):
         with tempfile.TemporaryDirectory() as tmp:
