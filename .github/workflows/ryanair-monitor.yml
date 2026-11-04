@@ -28,19 +28,13 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
         run: python monitor.py
-      - name: Commit updated history
+      - name: Commit confirmed fare history and observation times
         if: ${{ always() }}
         run: |
-          if [ -f state/history.json ] && ! git diff --quiet -- state/history.json; then
+          if [ -n "$(git status --porcelain -- state/history.json state/latest_verified.json)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add state/history.json
-            git commit -m "Update confirmed Ryanair fare history"
-            git push
-          elif [ -f state/history.json ] && ! git ls-files --error-unmatch state/history.json >/dev/null 2>&1; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add state/history.json
-            git commit -m "Initialize confirmed Ryanair fare history"
+            git add -- state/history.json state/latest_verified.json
+            git commit -m "Update Ryanair fares and verified observation times"
             git push
           fi
