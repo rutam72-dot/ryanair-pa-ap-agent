@@ -130,6 +130,10 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
     notices = []
     queue_path = pending_path(path)
     pending = load_pending(queue_path)
+    # If an earlier run crashed after writing the outbox but before updating
+    # history, do not issue a second alert for the same observed transition.
+    pending_transitions = {(n.get("route"), n.get("date"), str(n.get("previous_pln")),
+                            str(n.get("current_pln"))) for n in pending}
     fresh_fares = []
     successes = 0
     # Timetable and fare data are independent. A missing fare is not a missing flight.
@@ -158,8 +162,13 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, sche
         history, new_notices = compare_and_store(history, fares, today)
         successes += 1
         for notice in new_notices:
+            transition = (notice["route"], notice["date"], str(notice["previous_pln"]),
+                          str(notice["current_pln"]))
+            if transition in pending_transitions:
+                continue  # Replayed after interrupted history commit.
             notice["change_id"] = uuid4().hex
-        notices.extend(new_notices)
+            pending_transitions.add(transition)
+            notices.append(notice)
         print(f"{route}: {len(fares)} dates returned, {len([f for f in fares if f.price_pln is not None])} confirmed prices")
     if successes:
         # Persist changes before advancing the price baseline. This is an outbox,
