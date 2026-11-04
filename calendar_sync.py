@@ -97,7 +97,8 @@ def classify(event):
     title = event.get("summary", "")
     private = (event.get("extendedProperties") or {}).get("private") or {}
     description = event.get("description", "")
-    if private.get("managed_by") != MARKER and not ("Ryanair" in description or "HeroFly" in description):
+    legacy_signature = any(s in description for s in ("Monitoring oferty", "Odczyt użyty do aktualizacji wpisu", "Zmiana ceny Ryanair", "Nie odczytano z Ryanair"))
+    if private.get("managed_by") != MARKER and not legacy_signature:
         return None
     if COMBINED.search(title):
         return ("combined", None)
