@@ -70,7 +70,7 @@ def save_recent_verifications(fares, today, path=LATEST_PATH):
     temp.write_text(json.dumps(records, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     temp.replace(path)
 
-def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None):
+def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None, schedule_fetcher=fetch_schedule):
     today = today or datetime.now(ZoneInfo("Europe/Warsaw")).date()
     horizon = today + timedelta(days=HORIZON_DAYS)
     history = load_history(path)
@@ -81,7 +81,7 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares, latest_path=None):
     schedules = {}
     for route in ("PA", "AP"):
         try:
-            schedules[route] = fetch_schedule(route, today, horizon)
+            schedules[route] = schedule_fetcher(route, today, horizon)
             print(f"{route}: timetable lists {len(schedules[route])} flight dates")
         except (ScheduleReadError, OSError, ValueError) as exc:
             print(f"{route}: Nie odczytano rozkladu Ryanair ({exc}); existing fares preserved")
