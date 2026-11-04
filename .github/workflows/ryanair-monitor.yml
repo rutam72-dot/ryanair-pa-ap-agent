@@ -21,9 +21,15 @@ jobs:
           python-version: '3.12'
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
-      - name: Fetch confirmed fares and update local history
+      - name: Fetch confirmed fares and update Google calendars
+        env:
+          RYANAIR_HORIZON_DAYS: "365"
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
         run: python monitor.py
       - name: Commit updated history
+        if: ${{ always() }}
         run: |
           if [ -f state/history.json ] && ! git diff --quiet -- state/history.json; then
             git config user.name "github-actions[bot]"
