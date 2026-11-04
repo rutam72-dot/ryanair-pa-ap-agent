@@ -157,6 +157,10 @@ def alert_payload(notice, now):
         "extendedProperties": {"private": {"managed_by": MARKER, "route": route, "kind": "alert", "change_id": notice.get("change_id", "")}},
     }
 
+def _stable_description(value):
+    """Ignore volatile read time when checking whether an event needs a patch."""
+    return "\n".join(line for line in (value or "").splitlines() if not line.startswith("Odczyt:"))
+
 def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=60):
     """Synchronize confirmed direct flights; keep historical prices if today's read failed.
 
@@ -227,7 +231,9 @@ def sync_calendars(fares, schedules, notices, today, api=None, now=None, limit=6
                 # Avoid rewriting identical fares on all six scheduled checks.
                 marker = ((prior.get("extendedProperties") or {}).get("private") or {})
                 if (prior.get("summary") == payload["summary"] and prior.get("colorId") == payload["colorId"]
-                        and prior.get("description") == payload["description"] and marker.get("managed_by") == MARKER):
+                        and _stable_description(prior.get("description")) == _stable_description(payload["description"])
+                        and prior.get("start", {}).get("date") == day
+                        and marker.get("managed_by") == MARKER):
                     continue
                 api.patch(calendar, prior["id"], payload)
             else:
