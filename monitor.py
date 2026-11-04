@@ -1,4 +1,4 @@
-"""Monitor Ryanair fares with durable history. No Google Calendar writes."""
+"""Monitor Ryanair fares with durable history and optional calendar sync."""
 import json
 import os
 from datetime import date, timedelta
@@ -12,9 +12,10 @@ from alerts import alert
 from ryanair_client import fetch_fares, RyanairReadError
 from ryanair_schedule import fetch_schedule, report_coverage, ScheduleReadError
 from fare_retries import retry_missing
+from calendar_sync import sync_calendars
 
 STATE_PATH = Path(os.getenv("RYANAIR_STATE_PATH", "state/history.json"))
-HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "180"))
+HORIZON_DAYS = int(os.getenv("RYANAIR_HORIZON_DAYS", "365"))
 
 def key(fare):
     return f"{fare.route}:{fare.departure_date.isoformat()}"
@@ -48,6 +49,7 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
     horizon = today + timedelta(days=HORIZON_DAYS)
     history = load_history(path)
     notices = []
+    fresh_fares = []
     successes = 0
     # Timetable and fare data are independent. A missing fare is not a missing flight.
     schedules = {}
@@ -71,6 +73,7 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
         if route in schedules:
             recovered = retry_missing(route, schedules[route], history, today, fetcher=fetcher)
             fares = list(fares) + recovered
+        fresh_fares.extend(fares)
         history, new_notices = compare_and_store(history, fares, today)
         successes += 1
         notices.extend(new_notices)
@@ -80,6 +83,8 @@ def run(today=None, path=STATE_PATH, fetcher=fetch_fares):
         temporary = path.with_suffix(".tmp")
         temporary.write_text(json.dumps(history, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         temporary.replace(path)
+    if successes:
+        sync_calendars(fresh_fares, schedules, notices, today)
     for notice in notices:
         print(json.dumps(notice, ensure_ascii=False))
     if not successes:
