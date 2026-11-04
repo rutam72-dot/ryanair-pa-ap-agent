@@ -76,8 +76,8 @@ class GoogleCalendarApi:
             url += "?" + urlencode(params)
         return _json_request(url, method, token=self.token, payload=payload)
     def list_events(self, calendar, start, end):
-        params = {"timeMin": start + "T00:00:00+01:00",
-                  "timeMax": end + "T00:00:00+01:00",
+        params = {"timeMin": datetime.combine(date.fromisoformat(start), datetime.min.time(), ZoneInfo("Europe/Warsaw")).isoformat(),
+                  "timeMax": datetime.combine(date.fromisoformat(end), datetime.min.time(), ZoneInfo("Europe/Warsaw")).isoformat(),
                   "maxResults": 2500, "singleEvents": "true", "showDeleted": "false"}
         out = []
         while True:
