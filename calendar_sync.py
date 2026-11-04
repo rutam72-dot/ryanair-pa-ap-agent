@@ -26,7 +26,9 @@ ROUTE_LINK = {
 }
 
 class CalendarSyncError(RuntimeError):
-    pass
+    def __init__(self, message, status=None):
+        super().__init__(message)
+        self.status = status
 
 def _json_request(url, method="GET", token=None, payload=None, form=None):
     data = None
@@ -46,10 +48,10 @@ def _json_request(url, method="GET", token=None, payload=None, form=None):
                 body = response.read()
             return json.loads(body) if body else {}
         except HTTPError as exc:
-            if exc.code in (429, 500, 502, 503, 504) and attempt < 2:
+            if exc.code in (429, 500, 502, 503, 504) and attempt < 2 and method != "POST":
                 time.sleep(2 ** attempt)
                 continue
-            raise CalendarSyncError(f"Google Calendar HTTP {exc.code}: {method}") from exc
+            raise CalendarSyncError(f"Google Calendar HTTP {exc.code}: {method}", exc.code) from exc
         except (URLError, TimeoutError, ValueError) as exc:
             raise CalendarSyncError(f"Google Calendar request failed: {method}") from exc
 
@@ -86,8 +88,18 @@ class GoogleCalendarApi:
             if not page.get("nextPageToken"):
                 return out
             params["pageToken"] = page["nextPageToken"]
+    def find_alerts(self, calendar, change_id):
+        params = {"privateExtendedProperty": f"change_id={change_id}", "showDeleted": "false"}
+        events = []
+        while True:
+            page = self.request(calendar, params=params)
+            events.extend(page.get("items", []))
+            if not page.get("nextPageToken"):
+                return events
+            params["pageToken"] = page["nextPageToken"]
+
     def create(self, calendar, payload):
-        return self.request(calendar, "POST", payload=payload)
+        return self.request(calendar, "POST", params={"sendUpdates": "none"}, payload=payload)
     def patch(self, calendar, event_id, payload):
         return self.request(calendar, "PATCH", event_id=event_id, payload=payload)
     def get_event(self, calendar, event_id):

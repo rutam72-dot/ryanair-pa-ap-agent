@@ -60,13 +60,11 @@ def main(argv=None):
     if not token:
         raise RuntimeError("Google Calendar OAuth not configured; no acknowledgements made")
     api = GoogleCalendarApi(token)
-    verified = verify_pending(args.history, receipts, api)
     if args.apply:
         acknowledged = acknowledge_verified_calendar_events(args.history, receipts, api)
-        if acknowledged != verified:
-            raise RuntimeError("Readback changed between verification and acknowledgement; inspect state")
         print(json.dumps({"acknowledged": acknowledged, "mode": "local-apply"}))
     else:
+        verified = verify_pending(args.history, receipts, api)
         print(json.dumps({"verified": verified, "mode": "dry-run", "queue_unchanged": True}))
     return 0
 
