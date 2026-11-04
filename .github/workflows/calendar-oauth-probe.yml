@@ -1,0 +1,75 @@
+name: Calendar OAuth readback probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test Google Calendar OAuth and private metadata
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timedelta
+          from uuid import uuid4
+          from zoneinfo import ZoneInfo
+          from calendar_sync import CALENDARS, CalendarSyncError, GoogleCalendarApi, alert_payload, oauth_token
+
+          token = oauth_token()
+          if not token:
+              raise SystemExit("Required OAuth secrets missing")
+          api = GoogleCalendarApi(token)
+          now = datetime.now(ZoneInfo("Europe/Warsaw"))
+          event_id = uuid4().hex
+          payload = alert_payload({
+              "route": "PA", "date": (now.date() + timedelta(days=1)).isoformat(),
+              "title": "TEST techniczny Ryanair PA", "direction": "down",
+              "previous_pln": "100", "current_pln": "90", "delta_pln": "-10",
+              "change_id": "oauth-probe-" + event_id,
+          }, now)
+          payload.update(id=event_id, description="Test OAuth i odczytu, bez danych o cenie.")
+          failed = False
+          for index, calendar in enumerate(CALENDARS, 1):
+              created = False
+              try:
+                  api.create(calendar, payload)
+                  created = True
+                  print(f"Calendar {index}: insert OK", flush=True)
+                  event = api.get_event(calendar, event_id)
+                  private = (event.get("extendedProperties") or {}).get("private")
+                  reminders = event.get("reminders") or {}
+                  if (
+                      event.get("id") != event_id
+                      or event.get("status") != "confirmed"
+                      or event.get("summary") != payload["summary"]
+                      or (event.get("start") or {}).get("date") != payload["start"]["date"]
+                      or private != payload["extendedProperties"]["private"]
+                      or reminders.get("useDefault") is not False
+                      or reminders.get("overrides")
+                  ):
+                      raise ValueError("readback differs")
+                  print(f"Calendar {index}: readback OK", flush=True)
+              except (CalendarSyncError, ValueError) as exc:
+                  failed = True
+                  print(f"Calendar {index}: {exc}", flush=True)
+              finally:
+                  if created:
+                      try:
+                          api.delete(calendar, event_id)
+                          print(f"Calendar {index}: test event removed", flush=True)
+                      except CalendarSyncError as exc:
+                          failed = True
+                          print(f"Calendar {index}: cleanup failed ({event_id}): {exc}", flush=True)
+          raise SystemExit(int(failed))
+          PY
