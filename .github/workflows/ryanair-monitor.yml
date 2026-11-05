@@ -11,9 +11,9 @@ on:
         default: preview
         options: [preview, apply]
   push:
-    paths: ['**.py', 'tests/**', '.github/workflows/**']
+    paths: ['**.py', 'tests/**', '.github/workflows/**', 'README.md']
   pull_request:
-    paths: ['**.py', 'tests/**', '.github/workflows/**']
+    paths: ['**.py', 'tests/**', '.github/workflows/**', 'README.md']
 permissions:
   contents: read
 jobs:

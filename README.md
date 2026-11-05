@@ -1,7 +1,7 @@
 # Ryanair PA/AP — jeden kalendarz, bezpłatna wersja
 
 Przygotowany zamiennik kodu z main `438d4d64f3f48860d5e46cacbbe8d1645a3cab48`.
-Ta kopia nie jest wdrożona. Nie zmieniono repozytorium na GitHub ani kalendarzy.
+To zmiana przygotowawcza, niewdrożona na main. Zapisy do kalendarzy nie zostały włączone.
 Gałąź przygotowawcza może zostać opublikowana do przeglądu; nie oznacza to wdrożenia main.
 Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekretów Google.
 
