@@ -84,42 +84,6 @@
     "change_id": "843af802eb1c4d70a3dad37f7c96fc4a"
   },
   {
-    "date": "2026-11-24",
-    "title": "🔔 AP•9,20%",
-    "route": "AP",
-    "direction": "up",
-    "color": "red",
-    "percent": "9.203354981887014131392578571",
-    "previous_pln": "306.41",
-    "current_pln": "334.61",
-    "delta_pln": "28.20",
-    "change_id": "0b73502ff265478c8db7a5d3f48146da"
-  },
-  {
-    "date": "2026-11-26",
-    "title": "🔔 AP•14,84%",
-    "route": "AP",
-    "direction": "down",
-    "color": "green",
-    "percent": "14.83546067842777056345611757",
-    "previous_pln": "315.73",
-    "current_pln": "268.89",
-    "delta_pln": "-46.84",
-    "change_id": "2a32908e52254ba28f99c08b5cd9f121"
-  },
-  {
-    "date": "2026-12-05",
-    "title": "🔔 AP•2,18%",
-    "route": "AP",
-    "direction": "up",
-    "color": "red",
-    "percent": "2.176595429643156803711564089",
-    "previous_pln": "202.61",
-    "current_pln": "207.02",
-    "delta_pln": "4.41",
-    "change_id": "0b36363024af4883b18250cd4926ee39"
-  },
-  {
     "date": "2026-12-12",
     "title": "🔔 AP•18,15%",
     "route": "AP",
