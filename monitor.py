@@ -2,6 +2,7 @@
 import argparse
 import copy
 import hashlib
+from html import escape
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, time, timedelta
@@ -106,11 +107,14 @@ def metadata(kind, route, day, **extra):
 
 def observation_text(route, day, observed_at):
     observed = datetime.fromisoformat(observed_at).astimezone(TZ)
-    return (f"({ROUTES[route][0]})-({ROUTES[route][1]})\n\n"
-            f"Data lotu: {date.fromisoformat(day):%d.%m.%Y}\n\n"
-            f"Ostatni odczyt: {observed:%d.%m.%Y, %H:%M} — czas Warszawy\n\n"
-            "Zarezerwuj lot:\n\n" + booking_url(route, day) +
-            "\n\nCena taryfy Basic niepotwierdzona.")
+    # Calendar descriptions are HTML. Escape query separators so rendering cannot
+    # interpret URL parameters as entities, and preserve the approved paragraph layout.
+    url = escape(booking_url(route, day), quote=True)
+    return (f"<p>({ROUTES[route][0]})-({ROUTES[route][1]})</p>"
+            f"<p>Data lotu: {date.fromisoformat(day):%d.%m.%Y}</p>"
+            f"<p>Ostatni odczyt: {observed:%d.%m.%Y, %H:%M} — czas Warszawy</p>"
+            f'<p>Zarezerwuj lot:</p><p><a href="{url}">{url}</a></p>'
+            "<p>Cena taryfy Basic niepotwierdzona.</p>")
 
 
 def price_payload(route, day, record):
@@ -216,7 +220,7 @@ def prepare(state, quotes, diagnostic, now):
                 title = f"🔔{route} {percent_text}%"
                 payload = {
                     "summary": title,
-                    "description": (f"Zmiana: {reference:.2f} → {current:.2f} PLN\n" +
+                    "description": (f"<p>Zmiana: {reference:.2f} → {current:.2f} PLN</p>" +
                                     observation_text(route, day, quote["observed_at"])),
                     "colorId": "10" if current < reference else "11",
                     "start": {"date": day},
