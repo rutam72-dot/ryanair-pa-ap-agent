@@ -106,12 +106,11 @@ def metadata(kind, route, day, **extra):
 
 def observation_text(route, day, observed_at):
     observed = datetime.fromisoformat(observed_at).astimezone(TZ)
-    return (f"{'Poznań' if route == 'PA' else 'Alicante'} "
-            f"({ROUTES[route][0]})-({ROUTES[route][1]})\n"
-            f"Data lotu: {date.fromisoformat(day):%d.%m.%Y}\n"
+    return (f"({ROUTES[route][0]})-({ROUTES[route][1]})\n\n"
+            f"Data lotu: {date.fromisoformat(day):%d.%m.%Y}\n\n"
             f"Ostatni odczyt: {observed:%d.%m.%Y, %H:%M} — czas Warszawy\n\n"
-            "Zarezerwuj lot:\n" + booking_url(route, day) +
-            "\n\nCena ofertowa w PLN. Koszyk i taryfa Basic niepotwierdzone.")
+            "Zarezerwuj lot:\n\n" + booking_url(route, day) +
+            "\n\nCena taryfy Basic niepotwierdzona.")
 
 
 def price_payload(route, day, record):

@@ -44,6 +44,9 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(body["summary"], "PA 218.50")
         self.assertEqual(body["start"], {"date": DAY})
         self.assertIn("05.11.2026, 12:07", body["description"])
+        self.assertTrue(body["description"].startswith("(POZ)-(ALC)\n\n"))
+        self.assertTrue(body["description"].endswith("Cena taryfy Basic niepotwierdzona."))
+        self.assertNotIn("Poznań", body["description"])
         self.assertEqual(body["reminders"], {"useDefault": False, "overrides": []})
 
     def test_booking_links_both_directions_exact_date_one_adult(self):

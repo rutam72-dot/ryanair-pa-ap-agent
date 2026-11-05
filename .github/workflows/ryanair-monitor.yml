@@ -55,7 +55,8 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event.repository.private == false &&
-      ((github.event_name == 'schedule' && vars.RYANAIR_SIMPLE_ENABLED == '1') ||
+      (((github.event_name == 'schedule' || github.event_name == 'push') &&
+      vars.RYANAIR_SIMPLE_ENABLED != '0') ||
       github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -69,15 +70,15 @@ jobs:
       - name: Preview (no Google access or state writes)
         if: github.event_name == 'workflow_dispatch' && inputs.mode == 'preview'
         run: python monitor.py preview
-      - name: Require explicit activation for writes
-        if: github.event_name == 'schedule' || inputs.mode == 'apply'
+      - name: Check production pause switch
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'apply'
         env:
-          ENABLED: ${{ vars.RYANAIR_SIMPLE_ENABLED }}
+          ENABLED: ${{ vars.RYANAIR_SIMPLE_ENABLED || '1' }}
         run: |
-          test "$ENABLED" = "1" || { echo "::error::Set RYANAIR_SIMPLE_ENABLED=1 after reviewing the preview"; exit 1; }
+          test "$ENABLED" = "1" || { echo "::error::Production is paused by RYANAIR_SIMPLE_ENABLED"; exit 1; }
       - name: Stage durable plan
         id: stage
-        if: github.event_name == 'schedule' || inputs.mode == 'apply'
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'apply'
         run: python monitor.py stage
       - name: Publish plan before any Calendar write
         id: publish

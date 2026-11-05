@@ -1,7 +1,8 @@
 # Ryanair PA/AP — jeden kalendarz, bezpłatna wersja
 
 Przygotowany zamiennik kodu z main `438d4d64f3f48860d5e46cacbbe8d1645a3cab48`.
-To zmiana przygotowawcza, niewdrożona na main. Zapisy do kalendarzy nie zostały włączone.
+Wersja do wdrożenia zatwierdzona przez właściciela: po scaleniu do main uruchamia
+pierwszy zapis i godzinowy harmonogram. RYANAIR_SIMPLE_ENABLED=0 wstrzymuje zapisy.
 Gałąź przygotowawcza może zostać opublikowana do przeglądu; nie oznacza to wdrożenia main.
 Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekretów Google.
 
@@ -14,7 +15,7 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
 - Jedno wydarzenie całodniowe dla kierunku i daty. Tytuł **PA 218.50** lub **AP 218.50**.
 - Kolory ceny: <300 zielony (10), 300–<500 żółty (5),
   500–<650 pomarańczowy (6), ≥650 czerwony (11).
-- Opis: trasa, data lotu, czas rzeczywistego poprawnego odczytu w Warszawie,
+- Opis: (POZ)-(ALC) lub (ALC)-(POZ), data lotu, czas poprawnego odczytu w Warszawie,
   link rezerwacji z kierunkiem, datą, jedną osobą dorosłą i podróżą w jedną stronę.
 - Cena jest w PLN, bez „zł” w tytule; koszyk i taryfa Basic niepotwierdzone.
   Link wybiera trasę i datę, nie numer rejsu ani gwarantowaną cenę.
@@ -111,8 +112,9 @@ Sieciowy preview może potrwać; sam brak dostępu w danym środowisku nie dowod
    Dwa takie wpisy dla tej samej daty blokują operację do ręcznego wyjaśnienia.
    Wpisy rozpoznawalne tylko po tytule/opisie nie są przejmowane ani usuwane.
    Jeśli istnieją, trzeba najpierw zatwierdzić osobny plan porządkowania po ID.
-7. Dopiero po przeglądzie ustaw zmienną **RYANAIR_SIMPLE_ENABLED=1** i uruchom
-   ręcznie `apply`. Ta nowa bramka jest domyślnie zamknięta i niezależna od starej.
+7. Po zatwierdzeniu wdrożenia scalenie do main rozpoczyna pierwszy zapis.
+   Brak zmiennej **RYANAIR_SIMPLE_ENABLED** oznacza aktywny monitor;
+   wartość 1 również go włącza, a 0 wstrzymuje. Podgląd ręczny pozostaje dostępny.
    Publikacja kolejki wymaga contents:write i możliwości zwykłego push pliku stanu.
 8. Sprawdź wpis cenowy, kolory graniczne i czas/link w jednym kalendarzu.
    Test telefonu musi obejmować rzeczywiste odebranie przypomnienia popup
@@ -120,4 +122,4 @@ Sieciowy preview może potrwać; sam brak dostępu w danym środowisku nie dowod
 9. Zweryfikuj pierwszy reset i kolejny godzinowy przebieg; w razie problemu
    ustaw RYANAIR_SIMPLE_ENABLED=0. Nie czyść pliku stanu podczas ponowień.
 
-Przygotowanie nie tworzy wydarzeń testowych ani nie uruchamia produkcji.
+Podgląd i testy nie tworzą wydarzeń. Zapis produkcyjny jest ograniczony do main.
