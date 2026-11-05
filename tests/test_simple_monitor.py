@@ -1,5 +1,6 @@
 import copy
 import json
+from html.parser import HTMLParser
 import tempfile
 import unittest
 from datetime import date, datetime, timedelta
@@ -44,10 +45,31 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(body["summary"], "PA 218.50")
         self.assertEqual(body["start"], {"date": DAY})
         self.assertIn("05.11.2026, 12:07", body["description"])
-        self.assertTrue(body["description"].startswith("(POZ)-(ALC)\n\n"))
-        self.assertTrue(body["description"].endswith("Cena taryfy Basic niepotwierdzona."))
+        self.assertTrue(body["description"].startswith("<p>(POZ)-(ALC)</p>"))
+        self.assertTrue(body["description"].endswith("<p>Cena taryfy Basic niepotwierdzona.</p>"))
         self.assertNotIn("Poznań", body["description"])
         self.assertEqual(body["reminders"], {"useDefault": False, "overrides": []})
+
+    def test_rendered_booking_link_preserves_query_and_paragraphs(self):
+        class DescriptionParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.href = None
+                self.paragraphs = 0
+            def handle_starttag(self, tag, attrs):
+                if tag == "a":
+                    self.href = dict(attrs)["href"]
+                if tag == "p":
+                    self.paragraphs += 1
+        body = price_payload("AP", DAY, quotes("218.5")[KEY])
+        parser = DescriptionParser()
+        parser.feed(body["description"])
+        self.assertEqual(parser.href, booking_url("AP", DAY))
+        self.assertEqual(parser.paragraphs, 6)
+        params = parse_qs(urlparse(parser.href).query)
+        self.assertEqual(params["dateOut"], [DAY])
+        self.assertEqual(params["originIata"], ["ALC"])
+        self.assertNotIn("dateOut;", params)
 
     def test_booking_links_both_directions_exact_date_one_adult(self):
         for route, origin, destination in [("PA", "POZ", "ALC"), ("AP", "ALC", "POZ")]:
