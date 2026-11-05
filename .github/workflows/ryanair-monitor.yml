@@ -1,105 +1,123 @@
-name: Ryanair PA AP monitor
+name: Ryanair single-calendar monitor
 on:
   schedule:
-    - cron: '7 0,4,8,12,16,20 * * *'
-      timezone: 'Europe/Warsaw'
+    - cron: '7 * * * *'
+      timezone: Europe/Warsaw
   workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview reads Ryanair only; apply writes the single calendar
+        type: choice
+        default: preview
+        options: [preview, apply]
   push:
-    paths:
-      - 'state/monitor-test-trigger.txt'
+    paths: ['**.py', 'tests/**', '.github/workflows/**', 'README.md']
+  pull_request:
+    paths: ['**.py', 'tests/**', '.github/workflows/**', 'README.md']
 permissions:
-  contents: write
-concurrency:
-  group: ryanair-pa-ap-monitor
-  cancel-in-progress: false
+  contents: read
 jobs:
-  monitor:
+  tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          persist-credentials: true
-      - uses: actions/setup-python@v5
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: '3.12'
-      - name: Run unit tests
-        id: unit_tests
-        run: python -m unittest discover -s tests -v
-      - name: Fetch confirmed Ryanair fares (calendar writes by ChatGPT)
-        id: fare_fetch
+      - run: python -m unittest discover -s tests -v
+  branch-preview:
+    needs: tests
+    if: >-
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/heads/prepare/simple-free-') &&
+      github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Read live Ryanair offers without Google access
+        run: python monitor.py preview
+  monitor:
+    needs: tests
+    concurrency:
+      group: ryanair-single-calendar
+      cancel-in-progress: false
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.repository.private == false &&
+      (((github.event_name == 'schedule' || github.event_name == 'push') &&
+      vars.RYANAIR_SIMPLE_ENABLED != '0') ||
+      github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Preview (no Google access or state writes)
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'preview'
+        run: python monitor.py preview
+      - name: Check production pause switch
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'apply'
         env:
-          RYANAIR_HORIZON_DAYS: "365"
-          GOOGLE_CALENDAR_SYNC_ENABLED: "0"
-        run: python monitor.py
-      - name: Save run diagnostic record
-        if: ${{ always() }}
-        env:
-          UNIT_TESTS_OUTCOME: ${{ steps.unit_tests.outcome }}
-          FARE_FETCH_OUTCOME: ${{ steps.fare_fetch.outcome }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          ENABLED: ${{ vars.RYANAIR_SIMPLE_ENABLED || '1' }}
         run: |
-          python - <<'PY'
-          import json
-          import os
-          from datetime import datetime, timedelta
-          from pathlib import Path
-          from zoneinfo import ZoneInfo
-
-          now = datetime.now(ZoneInfo("Europe/Warsaw"))
-          p = Path("state/latest_verified.json")
-          try:
-              prices = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-          except (ValueError, OSError):
-              prices = {}
-          fresh_count = 0
-          for item in prices.values() if isinstance(prices, dict) else []:
-              try:
-                  observed = datetime.fromisoformat(item["observed_at"])
-                  if now - timedelta(hours=8) <= observed <= now + timedelta(minutes=5):
-                      fresh_count += 1
-              except (KeyError, TypeError, ValueError):
-                  continue
-          result = {
-              "checked_at_warsaw": now.isoformat(timespec="seconds"),
-              "tests": os.environ.get("UNIT_TESTS_OUTCOME"),
-              "fare_fetch": os.environ.get("FARE_FETCH_OUTCOME"),
-              "fresh_verified_price_count": fresh_count,
-              "calendar_write_owner": "ChatGPT",
-              "github_calendar_writes_enabled": False,
-              "github_run_id": os.environ.get("GITHUB_RUN_ID"),
-              "github_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
-              "trigger": os.environ.get("GITHUB_EVENT_NAME"),
-          }
-          out = Path("state/last_run.json")
-          out.parent.mkdir(exist_ok=True)
-          out.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-          print("Saved Ryanair PA/AP diagnostic record:", result)
-          PY
-      - name: Commit confirmed fare history, durable pending alerts and diagnostics
-        if: ${{ always() }}
+          test "$ENABLED" = "1" || { echo "::error::Production is paused by RYANAIR_SIMPLE_ENABLED"; exit 1; }
+      - name: Stage durable plan
+        id: stage
+        if: github.event_name != 'workflow_dispatch' || inputs.mode == 'apply'
+        run: python monitor.py stage
+      - name: Publish plan before any Calendar write
+        id: publish
+        if: steps.stage.outcome == 'success'
         run: |
-          if [ -n "$(git status --porcelain -- state/history.json state/pending_alerts.json state/latest_verified.json state/last_run.json)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -- state/history.json state/pending_alerts.json state/latest_verified.json state/last_run.json
-            git commit -m "Update Ryanair prices and run diagnostics"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- state/runtime.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Stage single-calendar Ryanair observations"
             git push
           fi
-
-      - name: Deliver and verify durable calendar alerts
-        if: ${{ success() && vars.RYANAIR_CALENDAR_DELIVERY_VERIFIED == '1' }}
+      - name: Deliver and verify
+        id: delivery
+        if: steps.publish.outcome == 'success'
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+        run: python monitor.py deliver
+      - name: Persist acknowledgements, including partial delivery
+        if: ${{ always() && steps.publish.outcome == 'success' }}
         run: |
-          python calendar_delivery.py
-          if ! git diff --quiet -- state/pending_alerts.json; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add state/pending_alerts.json
-            git commit -m "Acknowledge independently verified calendar alerts"
+          git add -- state/runtime.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Save verified single-calendar delivery progress"
             git push
           fi
+      - name: Check freshness and remaining work
+        if: ${{ always() && steps.publish.outcome == 'success' }}
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          state = json.loads(Path("state/runtime.json").read_text())
+          diagnostic = state["diagnostic"]
+          print(json.dumps({"diagnostic": diagnostic,
+                            "pending_operations": len(state["outbox"]),
+                            "weekly_pending": state["weekly_pending"]}, ensure_ascii=False))
+          if not diagnostic.get("complete") or state["outbox"] or state["weekly_pending"]:
+              raise SystemExit("Partial data or delivery: inspect log; preserved state will be retried")
+          PY
