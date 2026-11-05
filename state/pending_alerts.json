@@ -466,5 +466,17 @@
     "current_pln": "440.52",
     "delta_pln": "-2.62",
     "change_id": "1e0140048e8b43daa35760f7fbbd848c"
+  },
+  {
+    "date": "2026-11-24",
+    "title": "🔔 AP•1,32%",
+    "route": "AP",
+    "direction": "down",
+    "color": "green",
+    "percent": "1.317952242909656017453154419",
+    "previous_pln": "334.61",
+    "current_pln": "330.2",
+    "delta_pln": "-4.41",
+    "change_id": "b4b2120701fa4f39954452de5bd8b399"
   }
 ]
