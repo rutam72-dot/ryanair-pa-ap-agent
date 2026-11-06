@@ -9,7 +9,7 @@ from urllib.error import HTTPError
 from unittest.mock import patch
 
 from calendar_sync import CalendarError, GoogleCalendarApi, deliver
-from monitor import CALENDAR, MARKER, load_state, save_state
+from monitor import CALENDAR, MARKER, load_state, save_state, prepare, health_errors
 from test_simple_monitor import DAY, KEY, NOW, plan, seeded, empty_state
 
 
@@ -52,6 +52,110 @@ class FakeApi:
 
 
 class DeliveryTests(unittest.TestCase):
+    def test_deleted_price_recreated_from_fresh_quote_and_id_remembered(self):
+        state = plan(seeded(), 200)
+        original = copy.deepcopy(state)
+        api = FakeApi()
+        old_id = state["outbox"]["price:" + KEY]["event_id"]
+        api.events[old_id] = {"id": old_id, "status": "cancelled"}
+        self.assertEqual(deliver(state, api, NOW), [])
+        replacement = state["prices"][KEY]["event_id"]
+        self.assertNotEqual(replacement, old_id)
+        self.assertEqual(api.events[old_id]["status"], "cancelled")
+        self.assertEqual(api.events[replacement]["summary"], "PA 200.00")
+        self.assertEqual(api.inserts, 1)
+        # Simulate losing the Git acknowledgement after remote success.
+        self.assertEqual(deliver(original, api, NOW), [])
+        self.assertEqual(api.inserts, 1)
+        again = plan(state, 200)
+        self.assertEqual(again["outbox"]["price:" + KEY]["event_id"], replacement)
+
+    def test_repeated_price_deletion_has_one_active_replacement(self):
+        state = plan(seeded(), 200)
+        api = FakeApi()
+        deliver(state, api, NOW)
+        for _ in range(2):
+            active_id = state["prices"][KEY]["event_id"]
+            api.events[active_id]["status"] = "cancelled"
+            state = plan(state, 200)
+            self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(len([e for e in api.events.values() if e["status"] == "confirmed"]), 1)
+        self.assertFalse(state["outbox"])
+
+    def test_deleted_price_without_fresh_quote_is_not_restored(self):
+        state = plan(seeded(), 200)
+        api = FakeApi()
+        old_id = state["outbox"]["price:" + KEY]["event_id"]
+        api.events[old_id] = {"id": old_id, "status": "cancelled"}
+        state = prepare(state, {}, {"expected": 1, "read": 0, "errors": [],
+                                   "complete": False, "checked_at": NOW.isoformat()}, NOW)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.inserts, 0)
+        self.assertEqual(health_errors(state), [])
+
+    def test_old_direct_delivery_cannot_restore_price_without_new_read(self):
+        state = plan(seeded(), 200)
+        api = FakeApi()
+        old_id = state["outbox"]["price:" + KEY]["event_id"]
+        api.events[old_id] = {"id": old_id, "status": "cancelled"}
+        self.assertTrue(deliver(state, api, NOW + timedelta(hours=2)))
+        self.assertEqual(api.inserts, 0)
+        self.assertTrue(state["outbox"])
+
+    def test_lost_replacement_insert_response_recovers_without_duplicate(self):
+        state = plan(seeded(), 200)
+        before = copy.deepcopy(state)
+        api = FakeApi()
+        old_id = state["outbox"]["price:" + KEY]["event_id"]
+        api.events[old_id] = {"id": old_id, "status": "cancelled"}
+        api.fail_insert_after_write = True
+        self.assertTrue(deliver(state, api, NOW))
+        self.assertEqual(deliver(before, api, NOW), [])
+        self.assertEqual(api.inserts, 1)
+        self.assertFalse(before["outbox"])
+
+    def test_reserved_deleted_id_with_404_readback_uses_stable_successor(self):
+        state = plan(seeded(), 200)
+        old_id = state["outbox"]["price:" + KEY]["event_id"]
+        class HiddenTombstoneApi(FakeApi):
+            def get(self, identifier):
+                return None if identifier == old_id else super().get(identifier)
+        api = HiddenTombstoneApi()
+        api.events[old_id] = {"id": old_id, "status": "cancelled"}
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.inserts, 1)
+        self.assertNotEqual(state["prices"][KEY]["event_id"], old_id)
+
+    def test_deleted_alert_and_its_pending_push_not_recreated(self):
+        state = plan(seeded(), 240)
+        api = FakeApi()
+        alert = next(j for j in state["outbox"].values() if j["kind"] == "alert")
+        api.events[alert["event_id"]] = {"id": alert["event_id"], "status": "cancelled"}
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.inserts, 1)  # Price only, no replacement alert or push.
+        self.assertFalse(state["outbox"])
+        self.assertTrue(state["diagnostic"]["warnings"])
+
+    def test_deleted_push_not_recreated(self):
+        state = plan(seeded(), 240)
+        api = FakeApi()
+        push = next(j for j in state["outbox"].values() if j["kind"] == "push")
+        api.events[push["event_id"]] = {"id": push["event_id"], "status": "cancelled"}
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.inserts, 2)  # Price and alert only.
+        self.assertFalse(state["outbox"])
+
+    def test_read_error_during_weekly_retry_does_not_clear_old_alerts(self):
+        api = FakeApi()
+        deliver(plan(seeded(), 240), api, NOW)
+        state = plan(empty_state(), 250)
+        state = prepare(state, {}, {"expected": 1, "read": 0, "complete": False,
+                                   "errors": ["API unavailable"], "checked_at": NOW.isoformat()}, NOW)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.deleted, [])
+        self.assertIsNotNone(state["weekly_pending"])
+        self.assertIn("API unavailable", health_errors(state))
+
     def test_delivers_price_alert_and_push_with_exact_reminders(self):
         state = plan(seeded(), 240)
         api = FakeApi()
@@ -157,6 +261,14 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(deliver(state, api, NOW), [])
         self.assertEqual(api.inserts, 0)
         self.assertEqual(api.events["old"]["summary"], "PA 200.00")
+        # Legacy Google IDs need not be our 64-character hashes.
+        again = plan(state, 200)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runtime.json"
+            save_state(again, path)
+            restored = load_state(path)
+        self.assertEqual(deliver(restored, api, NOW), [])
+        self.assertEqual(api.inserts, 0)
 
     def test_duplicate_owned_flights_block_update_and_cleanup(self):
         api = FakeApi()
@@ -200,6 +312,16 @@ class Response(io.BytesIO):
 
 
 class TransportTests(unittest.TestCase):
+    def test_gone_event_is_distinguished_from_never_existing_id(self):
+        def opener(req, timeout):
+            code = 410 if req.full_url.endswith("/deleted") else 404
+            raise HTTPError(req.full_url, code, "gone", {}, None)
+        api = GoogleCalendarApi("client", "secret", "refresh", opener)
+        api.token = "test-token"
+        api.expires = float("inf")
+        self.assertEqual(api.get("deleted"), {"id": "deleted", "status": "cancelled"})
+        self.assertIsNone(api.get("never-existed"))
+
     def test_only_one_calendar_auth_and_pagination(self):
         calls = []
         def opener(req, timeout):

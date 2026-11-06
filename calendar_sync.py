@@ -7,7 +7,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
-from monitor import CALENDAR, MARKER, ROUTES, TZ
+from monitor import CALENDAR, MARKER, ROUTES, TZ, event_id
 
 
 class CalendarError(RuntimeError):
@@ -84,7 +84,9 @@ class GoogleCalendarApi:
         try:
             return self.request(event_id=event_id)
         except CalendarError as exc:
-            if exc.status in (404, 410):
+            if exc.status == 410:
+                return {"id": event_id, "status": "cancelled"}
+            if exc.status == 404:
                 return None
             raise
 
@@ -151,6 +153,32 @@ def verified(event, event_id, body):
             and reminders.get("overrides", []) == body["reminders"]["overrides"])
 
 
+def fresh_price_job(state, job, now):
+    record = state["prices"].get(f"{job['route']}:{job['day']}", {})
+    observed = job.get("observed_at")
+    checked = state["diagnostic"].get("checked_at")
+    return (bool(observed) and observed == record.get("observed_at")
+            and bool(checked) and datetime.fromisoformat(observed) >= datetime.fromisoformat(checked)
+            and now - timedelta(hours=1) <= datetime.fromisoformat(observed) <= now + timedelta(minutes=5))
+
+
+def note(state, message):
+    warnings = state["diagnostic"].setdefault("warnings", [])
+    if message not in warnings:
+        warnings.append(message)
+
+
+def retire_cancelled_alert(state, key, job):
+    change_id = tags(job["body"]).get("change_id")
+    retired = [key]
+    if job["kind"] == "alert" and change_id:
+        retired.extend(k for k, item in state["outbox"].items()
+                       if item["kind"] == "push" and tags(item["body"]).get("change_id") == change_id)
+    for retired_key in retired:
+        state["outbox"].pop(retired_key, None)
+    note(state, f"Deleted {job['kind']} not recreated: {job['route']}:{job['day']}")
+
+
 def deliver(state, api, now, persist=lambda: None, clock=None):
     """Keep jobs pending until readback. Delete alerts only after weekly price delivery."""
     errors = []
@@ -172,6 +200,8 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
     jobs = sorted(list(state["outbox"].items()),
                   key=lambda pair: (pair[1]["kind"] == "flight", pair[0]))
     for key, job in jobs:
+        if key not in state["outbox"]:
+            continue
         body = job["body"]
         identifier = job["event_id"]
         try:
@@ -182,25 +212,54 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
                 if matches:
                     identifier = matches[0]["id"]
             prior = api.get(identifier)
-            if prior and (not owned(prior) or prior.get("attendees") or prior.get("status") == "cancelled"):
-                raise CalendarError("Event ID conflict; unrelated or cancelled event left unchanged")
-            if job["kind"] == "push" and not prior:
-                # A reminder on the flight date would arrive months too late.
-                # This separate short event requests a popup shortly after detection/delivery.
-                when = clock() if clock else now
-                when = (when + timedelta(minutes=5)).replace(microsecond=0)
-                body["start"] = {"dateTime": when.isoformat(), "timeZone": "Europe/Warsaw"}
-                body["end"] = {"dateTime": (when + timedelta(minutes=1)).isoformat(),
-                               "timeZone": "Europe/Warsaw"}
-                persist()
-            if not prior:
+            retired = False
+            for recovery in range(8):
+                if prior and prior.get("status") == "cancelled":
+                    if job["kind"] != "flight":
+                        retire_cancelled_alert(state, key, job)
+                        persist()
+                        retired = True
+                        break
+                    if not fresh_price_job(state, job, now):
+                        raise CalendarError("Fresh Ryanair quote required before restoring a deleted price")
+                    # Stable successor survives a lost response or a lost Git acknowledgement.
+                    identifier = event_id("restored-price:" + identifier)
+                    job["event_id"] = identifier
+                    state["prices"][f"{job['route']}:{job['day']}"]["event_id"] = identifier
+                    note(state, f"Restoring deleted price from fresh quote: {job['route']}:{job['day']}")
+                    persist()
+                    prior = api.get(identifier)
+                    continue
+                if prior and (not owned(prior) or prior.get("attendees")):
+                    raise CalendarError("Event ID conflict; unrelated event left unchanged")
+                if prior:
+                    break
+                if job["kind"] == "push":
+                    when = clock() if clock else now
+                    when = (when + timedelta(minutes=5)).replace(microsecond=0)
+                    body["start"] = {"dateTime": when.isoformat(), "timeZone": "Europe/Warsaw"}
+                    body["end"] = {"dateTime": (when + timedelta(minutes=1)).isoformat(),
+                                   "timeZone": "Europe/Warsaw"}
+                    persist()
                 try:
                     api.insert(identifier, body)
                 except CalendarError as exc:
                     if exc.status != 409:
                         raise
+                    prior = api.get(identifier)
+                    if prior is None:
+                        # Google can reserve the ID of a deleted event without returning its body.
+                        prior = {"id": identifier, "status": "cancelled"}
+                    continue
                 prior = api.get(identifier)
-            elif job["kind"] == "flight" and not verified(prior, identifier, body):
+                if prior and prior.get("status") == "cancelled":
+                    continue
+                break
+            else:
+                raise CalendarError("Too many deleted event IDs; queue preserved for review")
+            if retired:
+                continue
+            if job["kind"] == "flight" and prior and not verified(prior, identifier, body):
                 api.patch(identifier, body)
                 prior = api.get(identifier)
             # Preserve already-created push timing across runner crashes.
@@ -210,12 +269,17 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
                 expected = body
             if not verified(prior, identifier, expected):
                 raise CalendarError("Readback differs from planned event")
+            if (job["kind"] == "flight" and len(identifier) == 64
+                    and all(c in "0123456789abcdef" for c in identifier)):
+                state["prices"][f"{job['route']}:{job['day']}"]["event_id"] = identifier
             del state["outbox"][key]
             persist()
         except CalendarError as exc:
             errors.append(f"{job['kind']} {job['route']}:{job['day']}: {exc}")
 
-    if state["weekly_pending"] and not state["outbox"] and not errors:
+    if (state["weekly_pending"] and not state["outbox"] and not errors
+            and not state["diagnostic"].get("errors")
+            and state["diagnostic"].get("read", len(state["prices"]))):
         # Safe migration: never recognize ownership by title or description.
         try:
             for event in api.list(start, end):

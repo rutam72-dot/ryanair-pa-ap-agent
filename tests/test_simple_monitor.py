@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 from agent import Fare
 from monitor import (TZ, booking_url, collect, empty_state, event_id, load_state,
-                     prepare, price_color, price_payload, save_state, week_due, main)
+                     prepare, price_color, price_payload, save_state, week_due, main, health_errors)
 from ryanair_client import RyanairReadError
 from ryanair_schedule import ScheduleReadError
 
@@ -32,7 +32,11 @@ def seeded(amount="200"):
 
 
 def plan(state, amount, complete=True):
-    return prepare(state, quotes(amount), {"complete": complete}, NOW)
+    return prepare(state, quotes(amount), {
+        "complete": complete, "expected": 1 if complete else 2, "read": 1,
+        "checked_at": NOW.isoformat(), "warnings": [],
+        "errors": [] if complete else ["Simulated technical read failure"],
+    }, NOW)
 
 
 class DomainTests(unittest.TestCase):
@@ -170,10 +174,76 @@ class DomainTests(unittest.TestCase):
             self.assertEqual(restored, state)
             self.assertEqual(plan(restored, 240)["outbox"], state["outbox"])
 
-    def test_weekly_pending_must_finish_before_new_collection(self):
+    def test_weekly_retry_refreshes_baseline_without_alerts(self):
         state = plan(empty_state(), 240)
-        with self.assertRaises(ValueError):
-            plan(state, 250)
+        retried = plan(state, 250)
+        self.assertEqual(retried["weekly_pending"], state["weekly_pending"])
+        self.assertEqual(retried["prices"][KEY]["reference"], "250")
+        self.assertEqual([j["kind"] for j in retried["outbox"].values()], ["flight"])
+
+    def test_missing_fare_is_warning_but_transport_error_is_failure(self):
+        state = seeded()
+        state["diagnostic"] = {"expected": 2, "read": 1, "complete": False,
+                               "errors": [], "warnings": ["No current fare"], "missing": 1}
+        self.assertEqual(health_errors(state), [])
+        state["diagnostic"]["errors"] = ["API timeout"]
+        self.assertIn("API timeout", health_errors(state))
+
+    def test_pending_delivery_and_missing_timetable_still_fail(self):
+        state = plan(seeded(), 200)
+        self.assertTrue(health_errors(state))
+        state["outbox"] = {}
+        state["diagnostic"]["expected"] = 0
+        self.assertIn("No timetable dates confirmed", health_errors(state))
+
+    def test_status_command_warns_without_writing_or_calling_google(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runtime.json"
+            state = seeded()
+            state["diagnostic"] = {"expected": 2, "read": 1, "missing": 1,
+                                   "complete": False, "errors": [], "warnings": ["No current fare"]}
+            save_state(state, path)
+            before = path.read_bytes()
+            with patch("sys.argv", ["monitor.py", "status", "--state", str(path)]), \
+                 patch("calendar_sync.GoogleCalendarApi.from_environment") as google, \
+                 patch("builtins.print") as output:
+                self.assertEqual(main(), 0)
+                google.assert_not_called()
+                output.assert_any_call("::warning::No current fare")
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_status_command_keeps_technical_failure_nonzero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "runtime.json"
+            state = seeded()
+            state["diagnostic"] = {"expected": 2, "read": 1, "errors": ["API timeout"]}
+            save_state(state, path)
+            with patch("sys.argv", ["monitor.py", "status", "--state", str(path)]), \
+                 patch("builtins.print"):
+                self.assertEqual(main(), 1)
+
+    def test_stale_pending_price_removed_without_changing_last_quote(self):
+        state = plan(seeded(), 200)
+        old = copy.deepcopy(state["prices"][KEY])
+        result = prepare(state, {}, {"expected": 1, "read": 0, "complete": False,
+                                    "errors": [], "checked_at": NOW.isoformat()}, NOW)
+        self.assertEqual(result["prices"][KEY], old)
+        self.assertEqual(result["outbox"], {})
+        self.assertEqual(health_errors(result), [])
+
+    def test_weekly_reset_accepts_valid_empty_offer_and_keeps_its_old_record(self):
+        state = seeded()
+        missing = "AP:" + DAY
+        state["prices"][missing] = {**quotes("300")[KEY], "reference": "300"}
+        old_missing = copy.deepcopy(state["prices"][missing])
+        state["last_week"] = "2026-10-26"
+        result = prepare(state, quotes("220"), {"expected": 2, "read": 1,
+            "complete": False, "errors": [], "unavailable": [missing],
+            "checked_at": NOW.isoformat()}, NOW)
+        self.assertIsNotNone(result["weekly_pending"])
+        self.assertEqual(result["prices"][KEY]["reference"], "220")
+        self.assertEqual(result["prices"][missing], old_missing)
+        self.assertNotIn("price:" + missing, result["outbox"])
 
     def test_corrupt_state_cannot_inject_unowned_event(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -237,6 +307,9 @@ class CollectionTests(unittest.TestCase):
                                      lambda *args: {date(2026, 12, 17)})
         self.assertEqual(result, {})
         self.assertFalse(diagnostic["complete"])
+        self.assertEqual(len(diagnostic["unavailable"]), 2)
+        self.assertTrue(diagnostic["warnings"])
+        self.assertFalse(diagnostic["errors"])
 
     def test_schedule_failure_does_not_erase_other_route(self):
         def schedule(route, *args):

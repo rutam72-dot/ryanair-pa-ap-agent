@@ -144,7 +144,7 @@ def collect(now, fare_fetcher=fetch_fares, schedule_fetcher=fetch_schedule, cloc
     clock = clock or (lambda: datetime.now(TZ))
     today = now.date()
     end = today + timedelta(days=HORIZON)
-    expected, errors, quotes = set(), [], {}
+    expected, errors, quotes, unavailable = set(), [], {}, []
     for route in ROUTES:
         try:
             for day in schedule_fetcher(route, today, end):
@@ -179,40 +179,55 @@ def collect(now, fare_fetcher=fetch_fares, schedule_fetcher=fetch_schedule, cloc
                         "price": str(amount),
                         "observed_at": observed_at,
                     }
+                else:
+                    unavailable.append(f"{route}:{day.isoformat()}")
             except (RyanairReadError, OSError, ValueError) as exc:
                 errors.append(f"{route}:{day}: {exc}")
     complete = bool(expected) and not errors and len(quotes) == len(expected)
+    warnings = ([f"No current fare for {len(unavailable)} date(s); last verified prices preserved"]
+                if unavailable else [])
     return quotes, {"expected": len(expected), "read": len(quotes),
                     "missing": len(expected) - len(quotes), "errors": sorted(errors),
+                    "unavailable": sorted(unavailable), "warnings": warnings,
                     "complete": complete, "checked_at": now.isoformat(timespec="seconds")}
 
 
 def prepare(state, quotes, diagnostic, now):
     """Durably plan every effect before delivery. No network calls."""
     state = copy.deepcopy(state)
-    if state["weekly_pending"]:
-        raise ValueError("Finish pending weekly delivery before collecting new observations")
     state["diagnostic"] = diagnostic
     due = week_due(state, now)
-    reset = due is not None and diagnostic["complete"]
+    # Valid empty fare responses are normal, including sold-out/departed flights.
+    # Keep unavailable records unchanged; reset only the newly observed baselines.
+    reset = (bool(state["weekly_pending"]) or due is not None) and bool(quotes) and not diagnostic.get("errors")
+    if state["weekly_pending"] and not reset:
+        state["diagnostic"].setdefault("warnings", []).append(
+            "Weekly reset deferred: no usable fresh observations or technical read errors")
     if reset:
         # Weekly reset intentionally retires previous alert and push jobs.
         state["outbox"] = {k: v for k, v in state["outbox"].items()
                            if v["kind"] == "flight"}
-        state["weekly_pending"] = due
+        state["weekly_pending"] = state["weekly_pending"] or due
     today = now.date().isoformat()
     state["prices"] = {k: v for k, v in state["prices"].items()
                        if k.split(":")[1] >= today}
     # Never deliver a stale price-change push for a flight date already in the past.
     state["outbox"] = {k: v for k, v in state["outbox"].items()
                        if v["day"] >= today}
+    # An old pending price must never recreate a deleted entry without a fresh quote.
+    state["outbox"] = {k: v for k, v in state["outbox"].items()
+                       if v["kind"] != "flight" or f"{v['route']}:{v['day']}" in quotes}
     for key, quote in sorted(quotes.items()):
         route, day = key.split(":")
         old = state["prices"].get(key)
         reference = Decimal(old["reference"]) if old else Decimal(quote["price"])
         current = Decimal(quote["price"])
-        record = {**quote, "reference": str(current if reset else reference)}
-        if old and not reset and reference > 0:
+        remembered_id = (old or {}).get("event_id", "")
+        if len(remembered_id) != 64 or any(c not in "0123456789abcdef" for c in remembered_id):
+            remembered_id = event_id("price:" + key)
+        record = {**quote, "reference": str(current if reset else reference),
+                  "event_id": remembered_id}
+        if old and not reset and not state["weekly_pending"] and reference > 0:
             percent = abs(current - reference) * 100 / reference
             if percent > ALERT_THRESHOLD:
                 change = uuid4().hex
@@ -246,8 +261,22 @@ def prepare(state, quotes, diagnostic, now):
         state["prices"][key] = record
         state["outbox"]["price:" + key] = {
             "kind": "flight", "route": route, "day": day,
-            "event_id": event_id("price:" + key), "body": price_payload(route, day, record)}
+            "event_id": record["event_id"], "observed_at": quote["observed_at"],
+            "body": price_payload(route, day, record)}
     return state
+
+
+def health_errors(state):
+    """Data availability warnings do not hide genuine technical failures."""
+    diagnostic = state["diagnostic"]
+    errors = list(diagnostic.get("errors", [])) + list(diagnostic.get("delivery_errors", []))
+    if not diagnostic.get("expected"):
+        errors.append("No timetable dates confirmed")
+    if state["outbox"]:
+        errors.append(f"Pending operations: {len(state['outbox'])}")
+    if state["weekly_pending"]:
+        errors.append("Weekly delivery not finished")
+    return errors
 
 
 def summary(state):
@@ -259,11 +288,19 @@ def summary(state):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("preview", "stage", "deliver"))
+    parser.add_argument("mode", choices=("preview", "stage", "deliver", "status"))
     parser.add_argument("--state", type=Path, default=STATE_PATH)
     args = parser.parse_args()
     now = datetime.now(TZ)
     state = load_state(args.state)
+    if args.mode == "status":
+        print(json.dumps(summary(state), ensure_ascii=False, indent=2))
+        for warning in state["diagnostic"].get("warnings", []):
+            print("::warning::" + warning)
+        errors = health_errors(state)
+        for error in errors:
+            print("::error::" + error)
+        return int(bool(errors))
     if args.mode == "deliver":
         from calendar_sync import GoogleCalendarApi, deliver
         api = GoogleCalendarApi.from_environment()
@@ -273,9 +310,9 @@ def main():
         save_state(state, args.state)
         print(json.dumps({**summary(state), "delivery_errors": errors}, ensure_ascii=False))
         return int(bool(errors))
-    if not state["weekly_pending"]:
-        quotes, diagnostic = collect(now)
-        state = prepare(state, quotes, diagnostic, now)
+    # Refresh pending weekly plans too: a cancelled price requires a fresh quote.
+    quotes, diagnostic = collect(now)
+    state = prepare(state, quotes, diagnostic, now)
     if args.mode == "stage":
         save_state(state, args.state)
     print(json.dumps(summary(state), ensure_ascii=False, indent=2))
@@ -288,7 +325,7 @@ def main():
                 examples.append(price_payload(route, day, state["prices"][key]))
         print(json.dumps({"preview_examples": examples}, ensure_ascii=False, indent=2))
         print("PREVIEW: no file changes; no Google Calendar access.")
-        return int(not state["diagnostic"].get("complete"))
+        return int(bool(diagnostic.get("errors")) or not diagnostic.get("expected", len(quotes)))
     # Partial observations are kept and delivered. The workflow flags them afterward.
     return 0
 

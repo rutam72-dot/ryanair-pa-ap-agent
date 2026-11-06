@@ -25,6 +25,14 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
 - Nieudany lub pusty odczyt nie nadpisuje dotychczasowej ceny i jej czasu.
   Błędy jednego dnia nie odrzucają poprawnych danych z innych dni.
   Niewysłane operacje dla minionych dat lotów wygasają bez spóźnionego push.
+- Poprawna odpowiedź Ryanair bez oferty (np. po odlocie lub przy braku miejsc)
+  daje ostrzeżenie z listą dat, nie błąd całego zadania. Sam brak ceny nie dowodzi,
+  że lot już się odbył. Awarie sieci, formatu danych, OAuth i zapisu nadal kończą
+  zadanie błędem. Pole complete opisuje pokrycie cen, nie stan techniczny programu.
+- Usunięty wpis cenowy odtwarza się po świeżym odczycie, pod nowym stabilnym ID.
+  Stara oczekująca operacja bez świeżej ceny zostaje wycofana; cena i czas w stanie
+  nie są nadpisywane. Usunięte alerty i push nie są odtwarzane, a ich wycofanie
+  z kolejki jest zapisane jako ostrzeżenie.
 - Zmiana **>8%** tworzy osobny całodniowy alert: **🔔PA 9,17%** lub **🔔AP 9,17%**.
   Wzrost = czerwony (11), spadek = zielony (10). Dokładnie 8% nie generuje alertu.
 - Próg liczymy od ceny ostatniego wygenerowanego alertu, a po resecie tygodniowym
@@ -37,11 +45,12 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
 - Raz w tygodniu, od poniedziałku **04:07**: pełne odświeżenie cen i baz oraz
   usunięcie własnych alertów i krótkich wpisów push. Pierwszy przebieg jest bazowy.
   Jeśli planowy termin został pominięty, reset wykona najbliższy udany przebieg.
-- Reset czeka na kompletny odczyt wszystkich dat obu kierunków. Brak choć jednej
-  ceny pozostawia dotychczasowe alerty i bazę. W logach widać przyczynę.
-  Przy trwale niedostępnej cenie wymaga to wyjaśnienia; system nie udaje sukcesu.
-- Po rozpoczęciu resetu jego niedokończona dostawa jest kończona przed następnym
-  odczytem. Dopiero zweryfikowany zapis cen pozwala usuwać stare alerty.
+- Reset wymaga odczytu bez błędów technicznych i co najmniej jednej świeżej ceny.
+  Brak oferty dla pojedynczych dni nie blokuje resetu; ich ostatnie ceny, czasy
+  i bazy pozostają bez zmian. Pusta cała lista cen odkłada reset.
+- Niedokończony reset ponownie odczytuje oferty przed ponowieniem zapisu.
+  Nie tworzy wtedy alertów zmian, tylko odświeża bazę. Dopiero zweryfikowany zapis
+  dostępnych cen pozwala usuwać stare alerty; błąd techniczny blokuje czyszczenie.
 - Wydarzenia prywatne i wpisy bez jednoznacznego znacznika pozostają nietknięte.
 
 ## Jak to jest zbudowane
@@ -59,6 +68,8 @@ nowego wydarzenia przy ponowieniu. Zwykły push odrzuca konflikt; nie używamy f
 Odczyt Google jest stronicowany, token OAuth odnawiany, przejściowe błędy
 bezpiecznych operacji ponawiane. Błąd dostawy daje niezerowy kod zakończenia.
 Logi raportują kompletność odczytu i pozostałe operacje.
+`python monitor.py status` sprawdza błędy techniczne oraz kolejkę, osobno pokazując
+ostrzeżenia o brakujących ofertach. Nie wyciszamy powiadomień GitHuba o awariach.
 
 ## Bezpłatne platformy i ograniczenia
 

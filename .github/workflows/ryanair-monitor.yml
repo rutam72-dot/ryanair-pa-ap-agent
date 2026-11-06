@@ -109,15 +109,4 @@ jobs:
           fi
       - name: Check freshness and remaining work
         if: ${{ always() && steps.publish.outcome == 'success' }}
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          state = json.loads(Path("state/runtime.json").read_text())
-          diagnostic = state["diagnostic"]
-          print(json.dumps({"diagnostic": diagnostic,
-                            "pending_operations": len(state["outbox"]),
-                            "weekly_pending": state["weekly_pending"]}, ensure_ascii=False))
-          if not diagnostic.get("complete") or state["outbox"] or state["weekly_pending"]:
-              raise SystemExit("Partial data or delivery: inspect log; preserved state will be retried")
-          PY
+        run: python monitor.py status
