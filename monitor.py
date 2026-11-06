@@ -230,6 +230,10 @@ def prepare(state, quotes, diagnostic, now):
         if old and not reset and not state["weekly_pending"] and reference > 0:
             percent = abs(current - reference) * 100 / reference
             if percent > ALERT_THRESHOLD:
+                # A newer qualifying change supersedes unsent alerts and pushes for this slot.
+                state["outbox"] = {k: v for k, v in state["outbox"].items()
+                                   if not (v["route"] == route and v["day"] == day
+                                           and v["kind"] in ("alert", "push"))}
                 change = uuid4().hex
                 percent_text = f"{percent.quantize(Decimal('0.01'), rounding='ROUND_HALF_UP'):.2f}".replace(".", ",")
                 title = f"🔔{route} {percent_text}%"
@@ -242,13 +246,15 @@ def prepare(state, quotes, diagnostic, now):
                     "end": {"date": (date.fromisoformat(day) + timedelta(days=1)).isoformat()},
                     "transparency": "transparent",
                     "reminders": {"useDefault": False, "overrides": []},
-                    "extendedProperties": metadata("alert", route, day, change_id=change),
+                    "extendedProperties": metadata("alert", route, day, change_id=change,
+                                                   observed_at=quote["observed_at"]),
                 }
                 state["outbox"][change] = {"kind": "alert", "route": route, "day": day,
                                            "event_id": event_id(change), "body": payload}
                 if percent >= PUSH_THRESHOLD:
                     push = copy.deepcopy(payload)
-                    push["extendedProperties"] = metadata("push", route, day, change_id=change)
+                    push["extendedProperties"] = metadata("push", route, day, change_id=change,
+                                                        observed_at=quote["observed_at"])
                     # Start time is assigned immediately before the first insert attempt.
                     push.pop("start")
                     push.pop("end")

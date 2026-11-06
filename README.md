@@ -35,6 +35,19 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
   z kolejki jest zapisane jako ostrzeżenie.
 - Zmiana **>8%** tworzy osobny całodniowy alert: **🔔PA 9,17%** lub **🔔AP 9,17%**.
   Wzrost = czerwony (11), spadek = zielony (10). Dokładnie 8% nie generuje alertu.
+- W całym kalendarzu pozostaje **najwyżej jeden całodniowy alert dla kierunku i daty**:
+  jeden PA i jeden AP na datę lotu. Nowy alert zastępuje poprzedni po potwierdzeniu
+  zapisu i odczytu kontrolnego Google. Nie wygrywa największy procent, tylko
+  najnowszy poprawny odczyt, który spełnił próg. Zmiana poniżej progu pozostawia
+  poprzedni alert. Wpis z bieżącą ceną pozostaje osobno.
+- Każdy przebieg porządkuje również wcześniejsze powielone własne alerty w całym
+  kalendarzu, także dla dat minionych i poza horyzontem odczytu. Wybiera najnowszy
+  według czasu obserwacji; starsze usuwa dopiero po sprawdzeniu zachowanego wpisu.
+  Błąd usuwania jest zgłaszany i ponawiany. Obce wpisy i wydarzenia z uczestnikami
+  nie są usuwane. Dane własności muszą wskazywać dokładny kierunek i datę.
+- Nowszy alert zastępuje też starsze niewysłane alerty i powiadomienia w kolejce
+  dla tego kierunku i daty. Zakończone powiadomienia telefonu są osobną historią:
+  ograniczenie jednego dzwoneczka dotyczy całodniowych alertów na dacie lotu.
 - Próg liczymy od ceny ostatniego wygenerowanego alertu, a po resecie tygodniowym
   od ceny bazowej; pierwsza obserwacja nowej daty ustanawia bazę bez alertu.
   Przykład: 200→210→218 = alert +9%; dalsze porównania do 218.

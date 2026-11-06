@@ -3,13 +3,14 @@ import io
 import json
 import tempfile
 import unittest
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from urllib.error import HTTPError
 from unittest.mock import patch
 
 from calendar_sync import CalendarError, GoogleCalendarApi, deliver
-from monitor import CALENDAR, MARKER, load_state, save_state, prepare, health_errors
+from monitor import (CALENDAR, MARKER, load_state, save_state, prepare, health_errors,
+                     observation_text)
 from test_simple_monitor import DAY, KEY, NOW, plan, seeded, empty_state
 
 
@@ -52,6 +53,146 @@ class FakeApi:
 
 
 class DeliveryTests(unittest.TestCase):
+    def alert(self, identifier, route="PA", day=DAY, when=NOW, legacy=False):
+        body = copy.deepcopy(next(j["body"] for j in plan(seeded(), 218)["outbox"].values()
+                                  if j["kind"] == "alert"))
+        body["summary"] = f"🔔{route} 9,00%"
+        body["description"] = observation_text(route, day, when.isoformat())
+        body["start"] = {"date": day}
+        body["end"] = {"date": (date.fromisoformat(day) + timedelta(days=1)).isoformat()}
+        private = body["extendedProperties"]["private"]
+        private.update(route=route, date=day, observed_at=when.isoformat())
+        if legacy:
+            private.pop("observed_at")
+        return {**body, "id": identifier, "status": "confirmed", "created": when.isoformat()}
+
+    def test_existing_alerts_reduced_to_latest_for_each_route_and_date(self):
+        api = FakeApi()
+        for route in ("PA", "AP"):
+            for number in range(3):
+                identifier = f"{route}-{number}"
+                api.events[identifier] = self.alert(identifier, route, "2026-11-17",
+                                                     NOW + timedelta(hours=number), legacy=True)
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(set(api.events), {"PA-2", "AP-2"})
+        self.assertEqual(api.inserts, 0)
+
+    def test_cleanup_covers_past_and_distant_future_and_keeps_foreign_entries(self):
+        class BoundsApi(FakeApi):
+            def list(self, start, end):
+                self.bounds = start, end
+                return super().list(start, end)
+        api = BoundsApi()
+        for day in ("2020-01-01", "2035-01-01"):
+            for number in (0, 1):
+                identifier = f"{day}-{number}"
+                api.events[identifier] = self.alert(identifier, day=day,
+                                                     when=NOW + timedelta(hours=number))
+        foreign = self.alert("personal")
+        foreign["extendedProperties"]["private"]["managed_by"] = "another-app"
+        api.events["personal"] = copy.deepcopy(foreign)
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(api.bounds, (None, None))
+        self.assertEqual(set(api.events), {"2020-01-01-1", "2035-01-01-1", "personal"})
+        self.assertEqual(api.events["personal"], foreign)
+
+    def test_old_alert_preserved_until_new_alert_readback_succeeds(self):
+        state = plan(seeded(), 218)
+        api = FakeApi()
+        api.events["previous"] = self.alert("previous", when=NOW - timedelta(hours=1))
+        api.fail_insert_after_write = True
+        self.assertTrue(deliver(state, api, NOW))
+        self.assertIn("previous", api.events)
+        self.assertFalse(api.deleted)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertNotIn("previous", api.events)
+        self.assertEqual(len([e for e in api.events.values()
+                              if e["extendedProperties"]["private"]["kind"] == "alert"]), 1)
+
+    def test_delete_failure_keeps_replacement_pending_and_push_waits(self):
+        state = plan(seeded(), 240)
+        api = FakeApi()
+        api.events["previous"] = self.alert("previous", when=NOW - timedelta(hours=1))
+        api.fail_delete = True
+        self.assertTrue(deliver(state, api, NOW))
+        self.assertTrue(any(j["kind"] == "alert" for j in state["outbox"].values()))
+        self.assertFalse(any(e["extendedProperties"]["private"]["kind"] == "push"
+                             for e in api.events.values()))
+        api.fail_delete = False
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertFalse(state["outbox"])
+        self.assertNotIn("previous", api.events)
+        self.assertEqual(len([e for e in api.events.values()
+                              if e["extendedProperties"]["private"]["kind"] == "alert"]), 1)
+        self.assertEqual(len([e for e in api.events.values()
+                              if e["extendedProperties"]["private"]["kind"] == "push"]), 1)
+
+    def test_unverified_winner_prevents_historical_cleanup(self):
+        api = FakeApi()
+        api.events["old"] = self.alert("old", when=NOW - timedelta(hours=1))
+        api.events["new"] = self.alert("new")
+        api.fail_readback = True
+        self.assertTrue(deliver(seeded(), api, NOW))
+        self.assertFalse(api.deleted)
+        self.assertEqual(set(api.events), {"old", "new"})
+
+    def test_newer_existing_alert_wins_over_a_late_old_queue_job(self):
+        api = FakeApi()
+        api.events["newer"] = self.alert("newer", when=NOW + timedelta(hours=1))
+        state = plan(seeded(), 240)
+        self.assertEqual(deliver(state, api, NOW), [])
+        alerts = [e for e in api.events.values()
+                  if e["extendedProperties"]["private"]["kind"] == "alert"]
+        self.assertEqual([e["id"] for e in alerts], ["newer"])
+        self.assertFalse(any(e["extendedProperties"]["private"]["kind"] == "push"
+                             for e in api.events.values()))
+        self.assertFalse(state["outbox"])
+
+    def test_migration_of_multiple_pending_alerts_does_not_send_old_push(self):
+        old = plan(seeded(), 240)
+        when = NOW + timedelta(hours=1)
+        new = prepare(seeded(), {KEY: {"price": "160", "observed_at": when.isoformat()}},
+                      {"expected": 1, "read": 1, "errors": [], "checked_at": when.isoformat()}, when)
+        new["outbox"].update({k: v for k, v in old["outbox"].items() if v["kind"] != "flight"})
+        api = FakeApi()
+        self.assertEqual(deliver(new, api, when), [])
+        alerts = [e for e in api.events.values()
+                  if e["extendedProperties"]["private"]["kind"] == "alert"]
+        pushes = [e for e in api.events.values()
+                  if e["extendedProperties"]["private"]["kind"] == "push"]
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(len(pushes), 1)
+        self.assertEqual(alerts[0]["colorId"], "10")
+        self.assertEqual(pushes[0]["colorId"], "10")
+
+    def test_pending_old_push_without_alert_job_is_retired_if_newer_alert_exists(self):
+        state = plan(seeded(), 240)
+        state["outbox"] = {k: j for k, j in state["outbox"].items() if j["kind"] == "push"}
+        api = FakeApi()
+        api.events["newer"] = self.alert("newer", when=NOW + timedelta(hours=1))
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.inserts, 0)
+        self.assertFalse(state["outbox"])
+
+    def test_weekly_cleanup_preserves_owned_event_with_attendees(self):
+        api = FakeApi()
+        meeting = self.alert("meeting")
+        meeting["attendees"] = [{"email": "guest@example.com"}]
+        api.events["meeting"] = copy.deepcopy(meeting)
+        state = plan(empty_state(), 250)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(api.events["meeting"], meeting)
+
+    def test_attendee_event_and_mismatched_date_are_not_cleanup_candidates(self):
+        api = FakeApi()
+        for identifier in ("old", "new", "meeting", "moved"):
+            api.events[identifier] = self.alert(identifier, when=NOW - timedelta(hours=1)
+                                                 if identifier == "old" else NOW)
+        api.events["meeting"]["attendees"] = [{"email": "guest@example.com"}]
+        api.events["moved"]["start"]["date"] = "2026-12-18"
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(set(api.events), {"new", "meeting", "moved"})
+
     def test_deleted_price_recreated_from_fresh_quote_and_id_remembered(self):
         state = plan(seeded(), 200)
         original = copy.deepcopy(state)
@@ -312,6 +453,18 @@ class Response(io.BytesIO):
 
 
 class TransportTests(unittest.TestCase):
+    def test_unbounded_owned_event_listing_omits_time_filters(self):
+        calls = []
+        def opener(req, timeout):
+            calls.append(req.full_url)
+            return Response(b'{"items":[]}')
+        api = GoogleCalendarApi("client", "secret", "refresh", opener)
+        api.token, api.expires = "test-token", float("inf")
+        self.assertEqual(api.list(None, None), [])
+        self.assertNotIn("timeMin", calls[0])
+        self.assertNotIn("timeMax", calls[0])
+        self.assertIn("privateExtendedProperty=managed_by%3D", calls[0])
+
     def test_gone_event_is_distinguished_from_never_existing_id(self):
         def opener(req, timeout):
             code = 410 if req.full_url.endswith("/deleted") else 404
