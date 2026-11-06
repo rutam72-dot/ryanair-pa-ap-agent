@@ -40,6 +40,17 @@ def plan(state, amount, complete=True):
 
 
 class DomainTests(unittest.TestCase):
+    def test_new_qualifying_change_supersedes_pending_alert_and_push_for_same_slot(self):
+        old = plan(seeded(), 240)
+        old_ids = {j["event_id"] for j in old["outbox"].values() if j["kind"] != "flight"}
+        new = plan(old, 270)
+        alerts = [j for j in new["outbox"].values() if j["kind"] == "alert"]
+        self.assertEqual(len(alerts), 1)
+        self.assertFalse(any(j["event_id"] in old_ids for j in new["outbox"].values()))
+        self.assertFalse(any(j["kind"] == "push" for j in new["outbox"].values()))
+        self.assertEqual(alerts[0]["body"]["extendedProperties"]["private"]["observed_at"],
+                         NOW.isoformat())
+
     def test_price_color_boundaries_and_decimal_title(self):
         for amount, color in [(0, "10"), ("299.99", "10"), (300, "5"),
                               ("499.99", "5"), (500, "6"), ("649.99", "6"),
@@ -117,11 +128,15 @@ class DomainTests(unittest.TestCase):
 
     def test_repeated_real_transition_not_deduplicated_as_crash(self):
         state = seeded()
+        identifiers = []
         for amount in (180, 200, 180):
             state = plan(state, amount)
+            identifiers.append(next(j["event_id"] for j in state["outbox"].values()
+                                    if j["kind"] == "alert"))
         alerts = [j for j in state["outbox"].values() if j["kind"] == "alert"]
-        self.assertEqual(len(alerts), 3)
-        self.assertEqual(len({j["event_id"] for j in alerts}), 3)
+        self.assertEqual(len(alerts), 1)
+        self.assertEqual(len(set(identifiers)), 3)
+        self.assertEqual(alerts[0]["event_id"], identifiers[-1])
         repeated = plan(state, 180)
         self.assertEqual(len(repeated["outbox"]), len(state["outbox"]))
 
