@@ -248,8 +248,8 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
                         raise
                     prior = api.get(identifier)
                     if prior is None:
-                        # Google can reserve the ID of a deleted event without returning its body.
-                        prior = {"id": identifier, "status": "cancelled"}
+                        # 409 + 404 does not prove deletion; the event may be temporarily unreadable.
+                        raise CalendarError("Event ID exists but cannot be verified; queue preserved")
                     continue
                 prior = api.get(identifier)
                 if prior and prior.get("status") == "cancelled":
