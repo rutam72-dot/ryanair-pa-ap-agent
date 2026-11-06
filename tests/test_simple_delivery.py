@@ -114,7 +114,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(api.inserts, 1)
         self.assertFalse(before["outbox"])
 
-    def test_reserved_deleted_id_with_404_readback_uses_stable_successor(self):
+    def test_unverifiable_conflict_does_not_assume_deletion_or_duplicate(self):
         state = plan(seeded(), 200)
         old_id = state["outbox"]["price:" + KEY]["event_id"]
         class HiddenTombstoneApi(FakeApi):
@@ -122,9 +122,9 @@ class DeliveryTests(unittest.TestCase):
                 return None if identifier == old_id else super().get(identifier)
         api = HiddenTombstoneApi()
         api.events[old_id] = {"id": old_id, "status": "cancelled"}
-        self.assertEqual(deliver(state, api, NOW), [])
-        self.assertEqual(api.inserts, 1)
-        self.assertNotEqual(state["prices"][KEY]["event_id"], old_id)
+        self.assertTrue(deliver(state, api, NOW))
+        self.assertEqual(api.inserts, 0)
+        self.assertEqual(state["outbox"]["price:" + KEY]["event_id"], old_id)
 
     def test_deleted_alert_and_its_pending_push_not_recreated(self):
         state = plan(seeded(), 240)
