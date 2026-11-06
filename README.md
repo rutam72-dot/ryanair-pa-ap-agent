@@ -64,6 +64,8 @@ Kolejka jest publikowana do GitHuba **przed** zapisami Google. Każde wydarzenie
 ma stabilne ID. Postęp usuwamy z kolejki dopiero po odczycie kontrolnym.
 Awaria po utworzeniu wydarzenia, a przed zapisem potwierdzenia, nie tworzy
 nowego wydarzenia przy ponowieniu. Zwykły push odrzuca konflikt; nie używamy force.
+Po wyjściu z kolejki monitor pobiera i testuje aktualny main, łącznie ze stanem
+zapisanym przez poprzedni przebieg, zamiast wersji z chwili wyzwolenia harmonogramu.
 
 Odczyt Google jest stronicowany, token OAuth odnawiany, przejściowe błędy
 bezpiecznych operacji ponawiane. Błąd dostawy daje niezerowy kod zakończenia.
