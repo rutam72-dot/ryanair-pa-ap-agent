@@ -2,6 +2,9 @@
   "diagnostic": {
     "checked_at": "2026-11-12T00:52:11+01:00",
     "complete": false,
+    "delivery_errors": [
+      "Google OAuth refresh failed"
+    ],
     "errors": [],
     "expected": 602,
     "missing": 1,
