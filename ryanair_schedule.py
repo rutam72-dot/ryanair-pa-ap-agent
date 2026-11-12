@@ -8,6 +8,7 @@ from datetime import date, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from agent import ROUTES
+from request_limits import RYANAIR_PACER
 
 BASE = "https://services-api.ryanair.com/timtbl/3/schedules"
 
@@ -43,12 +44,15 @@ def parse_schedule(payload, year, month, start, end):
 def fetch_schedule(route, start, end, opener=None, timeout=20):
     if route not in ROUTES:
         raise ValueError("Unknown route")
+    live = opener is None
     opener = opener or urlopen
     origin, destination = ROUTES[route]
     dates = set()
     for year, month in months_between(start, end):
         url = f"{BASE}/{origin}/{destination}/years/{year}/months/{month}"
         try:
+            if live:
+                RYANAIR_PACER.wait()
             with opener(Request(url, headers={"Accept": "application/json",
                                                "User-Agent": "Mozilla/5.0"}), timeout=timeout) as response:
                 payload = json.load(response)

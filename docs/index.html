@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ryanair PA AP Agent — osobisty monitor cen</title><meta name="description" content="Osobisty monitor cen lotów Poznań–Alicante i Alicante–Poznań z integracją Kalendarza Google."><link rel="stylesheet" href="style.css"></head><body><main>
+<nav aria-label="Nawigacja"><a href="index.html" aria-current="page">O aplikacji</a><a href="privacy.html">Polityka prywatności</a><a href="terms.html">Zasady korzystania</a></nav>
+<p class="eyebrow">Osobisty projekt · PA / AP</p><h1>Ryanair PA AP Agent</h1>
+<p class="lead">Monitor cen lotów Poznań → Alicante i Alicante → Poznań, połączony z jednym Kalendarzem Google właściciela.</p>
+<div class="panel"><strong>Co robi aplikacja?</strong><p>Sprawdza opublikowany rozkład i dostępne ceny lotów. Zapisuje ceny i datę odczytu w wydarzeniach kalendarza. Przy odpowiednio dużej zmianie tworzy alert oraz przypomnienie kalendarzowe. Nie kupuje biletów ani nie dokonuje rezerwacji.</p></div>
+<h2>Jak działa dostęp do Google?</h2><p>Właściciel udziela zgody OAuth na dostęp do wydarzeń kalendarza. Agent odczytuje własne oznaczone wydarzenia, tworzy je i aktualizuje, a także porządkuje własne alerty. Konto autoryzujące musi mieć prawo edycji kalendarza docelowego. Ta strona nie jest formularzem logowania i nie przyjmuje tokenów.</p>
+<h2>Uruchamianie i ograniczenia</h2><p>Kod i zadania działają w GitHub Actions, według godzinowego harmonogramu. GitHub może opóźnić lub pominąć uruchomienie. Źródło ofert Ryanair jest nieoficjalne i może być niedostępne. Cena jest obserwacją z określonej chwili, a nie gwarancją ceny przy zakupie. Dostarczenie przypomnienia zależy również od ustawień telefonu.</p>
+<p>Projekt jest przeznaczony do osobistego użytku. Nie jest oficjalną aplikacją Ryanair i nie jest powiązany z przewoźnikiem.</p>
+<p><a href="https://github.com/rutam72-dot/ryanair-pa-ap-agent">Kod źródłowy i dokumentacja</a> · <a href="privacy.html">Sposób przetwarzania danych</a></p>
+<footer>Operator projektu: właściciel konta GitHub rutam72-dot. Kontakt: <a href="mailto:rutam72@gmail.com">rutam72@gmail.com</a>.</footer>
+</main></body></html>

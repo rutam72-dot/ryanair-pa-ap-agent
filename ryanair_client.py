@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from agent import Fare, ROUTES
+from request_limits import RYANAIR_PACER
 
 BASE_URL = "https://services-api.ryanair.com/farfnd/v4/oneWayFares"
 MAX_WINDOW_DAYS = 7
@@ -55,6 +56,7 @@ def fetch_fares(route, start, end, timeout=20, opener=None):
         raise ValueError("Unknown route")
     if not isinstance(start, date) or not isinstance(end, date) or end < start:
         raise ValueError("Invalid dates")
+    live = opener is None
     opener = opener or urlopen
     origin, destination = ROUTES[route]
     found = {}
@@ -73,6 +75,8 @@ def fetch_fares(route, start, end, timeout=20, opener=None):
             "User-Agent": "ryanair-pa-ap-agent/0.2",
         })
         try:
+            if live:
+                RYANAIR_PACER.wait()
             with opener(request, timeout=timeout) as response:
                 payload = json.load(response)
         except (OSError, ValueError) as exc:
