@@ -51,13 +51,19 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(alerts[0]["body"]["extendedProperties"]["private"]["observed_at"],
                          NOW.isoformat())
 
-    def test_price_color_boundaries_and_decimal_title(self):
+    def test_price_color_boundaries_and_whole_number_title(self):
         for amount, color in [(0, "10"), ("299.99", "10"), (300, "5"),
                               ("499.99", "5"), (500, "6"), ("649.99", "6"),
                               (650, "11")]:
             self.assertEqual(price_color(amount), color)
         body = price_payload("PA", DAY, quotes("218.5")[KEY])
-        self.assertEqual(body["summary"], "PA 218.50")
+        self.assertEqual(body["summary"], "PA 219")
+        for amount, displayed in [("218.49", "218"), ("218.50", "219"),
+                                  ("218.99", "219"), ("0.00", "0")]:
+            for route in ("PA", "AP"):
+                with self.subTest(amount=amount, route=route):
+                    self.assertEqual(price_payload(route, DAY, quotes(amount)[KEY])["summary"],
+                                     f"{route} {displayed}")
         self.assertEqual(body["start"], {"date": DAY})
         self.assertIn("05.11.2026, 12:07", body["description"])
         self.assertTrue(body["description"].startswith("<p>(POZ)-(ALC)</p>"))
@@ -102,13 +108,20 @@ class DomainTests(unittest.TestCase):
             self.assertEqual([j["kind"] for j in state["outbox"].values()], ["flight"])
 
     def test_alert_above_eight_both_directions(self):
-        for amount, color in [("218.34", "11"), ("181.66", "10")]:
+        for amount, color, percent, displayed in [
+                ("218.34", "11", "9", "218"), ("181.66", "10", "9", "182"),
+                ("219", "11", "10", "219"), ("181", "10", "10", "181"),
+                ("216.01", "11", "8", "216"), ("183.99", "10", "8", "184")]:
             state = plan(seeded(), amount)
             alerts = [j for j in state["outbox"].values() if j["kind"] == "alert"]
             self.assertEqual(len(alerts), 1)
-            self.assertEqual(alerts[0]["body"]["summary"], "🔔PA 9,17%")
+            self.assertEqual(alerts[0]["body"]["summary"], f"🔔PA {percent}%")
+            self.assertTrue(alerts[0]["body"]["description"].startswith(
+                f"<p>Zmiana: 200 → {displayed} PLN</p>"))
             self.assertEqual(alerts[0]["body"]["colorId"], color)
             self.assertFalse(any(j["kind"] == "push" for j in state["outbox"].values()))
+            self.assertEqual(state["prices"][KEY]["price"], amount)
+            self.assertEqual(state["prices"][KEY]["reference"], amount)
 
     def test_push_at_twenty_both_directions_and_not_below(self):
         for amount in (240, 160):

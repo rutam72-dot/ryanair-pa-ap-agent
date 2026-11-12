@@ -6,7 +6,7 @@ from html import escape
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 import time as backoff
 from urllib.parse import urlencode
@@ -117,9 +117,14 @@ def observation_text(route, day, observed_at):
             "<p>Cena taryfy Basic niepotwierdzona.</p>")
 
 
+def whole_number(value):
+    """Round display text only; keep exact prices for comparisons and state."""
+    return format(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP), "f")
+
+
 def price_payload(route, day, record):
     return {
-        "summary": f"{route} {Decimal(record['price']):.2f}",
+        "summary": f"{route} {whole_number(record['price'])}",
         "description": observation_text(route, day, record["observed_at"]),
         "colorId": price_color(record["price"]),
         "start": {"date": day},
@@ -235,11 +240,11 @@ def prepare(state, quotes, diagnostic, now):
                                    if not (v["route"] == route and v["day"] == day
                                            and v["kind"] in ("alert", "push"))}
                 change = uuid4().hex
-                percent_text = f"{percent.quantize(Decimal('0.01'), rounding='ROUND_HALF_UP'):.2f}".replace(".", ",")
+                percent_text = whole_number(percent)
                 title = f"🔔{route} {percent_text}%"
                 payload = {
                     "summary": title,
-                    "description": (f"<p>Zmiana: {reference:.2f} → {current:.2f} PLN</p>" +
+                    "description": (f"<p>Zmiana: {whole_number(reference)} → {whole_number(current)} PLN</p>" +
                                     observation_text(route, day, quote["observed_at"])),
                     "colorId": "10" if current < reference else "11",
                     "start": {"date": day},
