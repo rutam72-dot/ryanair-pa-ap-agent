@@ -324,8 +324,10 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
     # Delivery may start after midnight even when its durable plan was staged yesterday.
     prices = {key: record for key, record in state["prices"].items()
               if date.fromisoformat(key.split(":")[1]) >= today}
+    # A durable queue may still contain increase pushes planned by an older version.
     outbox = {key: job for key, job in state["outbox"].items()
-              if date.fromisoformat(job["day"]) >= today}
+              if date.fromisoformat(job["day"]) >= today
+              and (job["kind"] != "push" or job["body"].get("colorId") == "10")}
     if prices != state["prices"] or outbox != state["outbox"]:
         state["prices"], state["outbox"] = prices, outbox
         persist()

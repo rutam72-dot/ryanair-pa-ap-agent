@@ -11,7 +11,7 @@ from unittest.mock import patch
 from calendar_sync import CalendarError, GoogleCalendarApi, deliver
 from monitor import (CALENDAR, MARKER, load_state, save_state, prepare, health_errors,
                      observation_text)
-from test_simple_monitor import DAY, KEY, NOW, plan, seeded, empty_state
+from test_simple_monitor import DAY, KEY, NOW, plan, seeded, empty_state, legacy_increase_plan
 
 
 class FakeApi:
@@ -53,6 +53,17 @@ class FakeApi:
 
 
 class DeliveryTests(unittest.TestCase):
+    def test_legacy_increase_push_is_retired_before_any_delivery(self):
+        state = legacy_increase_plan()
+        api = FakeApi()
+        persisted = []
+        self.assertEqual(deliver(state, api, NOW, persist=lambda: persisted.append(True)), [])
+        self.assertTrue(persisted)
+        self.assertEqual(state["outbox"], {})
+        kinds = {e["extendedProperties"]["private"]["kind"] for e in api.events.values()}
+        self.assertEqual(kinds, {"flight", "alert"})
+        self.assertTrue(all(e["reminders"]["overrides"] == [] for e in api.events.values()))
+
     def alert(self, identifier, route="PA", day=DAY, when=NOW, legacy=False):
         body = copy.deepcopy(next(j["body"] for j in plan(seeded(), 218)["outbox"].values()
                                   if j["kind"] == "alert"))
@@ -172,7 +183,7 @@ class DeliveryTests(unittest.TestCase):
             self.assertIn("past", api.events)
 
     def test_delivery_after_midnight_drops_old_queue_without_recreating_events(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         next_day = NOW.replace(month=12, day=18, hour=0, minute=1)
         persisted = []
@@ -205,7 +216,7 @@ class DeliveryTests(unittest.TestCase):
                               if e["extendedProperties"]["private"]["kind"] == "alert"]), 1)
 
     def test_delete_failure_keeps_replacement_pending_and_push_waits(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         api.events["previous"] = self.alert("previous", when=NOW - timedelta(hours=1))
         api.fail_delete = True
@@ -234,7 +245,7 @@ class DeliveryTests(unittest.TestCase):
     def test_newer_existing_alert_wins_over_a_late_old_queue_job(self):
         api = FakeApi()
         api.events["newer"] = self.alert("newer", when=NOW + timedelta(hours=1))
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         self.assertEqual(deliver(state, api, NOW), [])
         alerts = [e for e in api.events.values()
                   if e["extendedProperties"]["private"]["kind"] == "alert"]
@@ -244,7 +255,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertFalse(state["outbox"])
 
     def test_migration_of_multiple_pending_alerts_does_not_send_old_push(self):
-        old = plan(seeded(), 240)
+        old = legacy_increase_plan()
         when = NOW + timedelta(hours=1)
         new = prepare(seeded(), {KEY: {"price": "160", "observed_at": when.isoformat()}},
                       {"expected": 1, "read": 1, "errors": [], "checked_at": when.isoformat()}, when)
@@ -261,7 +272,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(pushes[0]["colorId"], "10")
 
     def test_pending_old_push_without_alert_job_is_retired_if_newer_alert_exists(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         state["outbox"] = {k: j for k, j in state["outbox"].items() if j["kind"] == "push"}
         api = FakeApi()
         api.events["newer"] = self.alert("newer", when=NOW + timedelta(hours=1))
@@ -363,7 +374,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(state["outbox"]["price:" + KEY]["event_id"], old_id)
 
     def test_deleted_alert_and_its_pending_push_not_recreated(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         alert = next(j for j in state["outbox"].values() if j["kind"] == "alert")
         api.events[alert["event_id"]] = {"id": alert["event_id"], "status": "cancelled"}
@@ -373,7 +384,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertTrue(state["diagnostic"]["warnings"])
 
     def test_deleted_push_not_recreated(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         push = next(j for j in state["outbox"].values() if j["kind"] == "push")
         api.events[push["event_id"]] = {"id": push["event_id"], "status": "cancelled"}
@@ -383,7 +394,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_read_error_during_weekly_retry_does_not_clear_old_alerts(self):
         api = FakeApi()
-        deliver(plan(seeded(), 240), api, NOW)
+        deliver(plan(seeded(), 160), api, NOW)
         state = plan(empty_state(), 250)
         state = prepare(state, {}, {"expected": 1, "read": 0, "complete": False,
                                    "errors": ["API unavailable"], "checked_at": NOW.isoformat()}, NOW)
@@ -393,7 +404,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertIn("API unavailable", health_errors(state))
 
     def test_delivers_price_alert_and_push_with_exact_reminders(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         self.assertEqual(deliver(state, api, NOW), [])
         self.assertEqual(state["outbox"], {})
@@ -416,7 +427,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(api.patches, 1)
 
     def test_lost_insert_response_recovers_without_duplicate(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         api.fail_insert_after_write = True
         self.assertTrue(deliver(state, api, NOW))
@@ -426,7 +437,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertFalse(state["outbox"])
 
     def test_failed_readback_remains_pending_until_success(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         api = FakeApi()
         api.fail_readback = True
         self.assertTrue(deliver(state, api, NOW))
@@ -436,7 +447,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(api.inserts, 3)
 
     def test_restart_after_remote_success_preserves_push_time(self):
-        original = plan(seeded(), 240)
+        original = plan(seeded(), 160)
         api = FakeApi()
         completed = copy.deepcopy(original)
         deliver(completed, api, NOW)
@@ -453,7 +464,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_weekly_reset_only_deletes_owned_alerts_after_prices_verified(self):
         api = FakeApi()
-        hourly = plan(seeded(), 240)
+        hourly = plan(seeded(), 160)
         deliver(hourly, api, NOW)
         personal = {"id": "personal", "summary": "PA holiday",
                     "description": "Monitoring oferty", "status": "confirmed",
@@ -469,7 +480,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_weekly_failed_price_readback_does_not_delete_alerts(self):
         api = FakeApi()
-        deliver(plan(seeded(), 240), api, NOW)
+        deliver(plan(seeded(), 160), api, NOW)
         state = plan(empty_state(), 250)
         api.fail_readback = True
         self.assertTrue(deliver(state, api, NOW))
@@ -478,7 +489,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_weekly_cleanup_failure_retries_next_run(self):
         api = FakeApi()
-        deliver(plan(seeded(), 240), api, NOW)
+        deliver(plan(seeded(), 160), api, NOW)
         state = plan(empty_state(), 250)
         api.fail_delete = True
         self.assertTrue(deliver(state, api, NOW))
