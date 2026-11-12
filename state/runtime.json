@@ -2,6 +2,9 @@
   "diagnostic": {
     "checked_at": "2026-11-12T11:04:22+01:00",
     "complete": false,
+    "delivery_errors": [
+      "Google OAuth refresh failed (invalid_grant, HTTP 400)"
+    ],
     "errors": [],
     "expected": 602,
     "missing": 1,
