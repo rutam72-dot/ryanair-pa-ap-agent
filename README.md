@@ -33,7 +33,9 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
   Stara oczekująca operacja bez świeżej ceny zostaje wycofana; cena i czas w stanie
   nie są nadpisywane. Usunięte alerty i push nie są odtwarzane, a ich wycofanie
   z kolejki jest zapisane jako ostrzeżenie.
-- Zmiana **>8%** tworzy osobny całodniowy alert: **🔔PA 9,17%** lub **🔔AP 9,17%**.
+- Ceny i procenty w kalendarzu są zaokrąglane do liczb całkowitych, połówki w górę
+  (218,50 PLN → 219; 9,17% → 9%). Porównania i progi używają dokładnych wartości.
+- Zmiana **>8%** tworzy osobny całodniowy alert: **🔔PA 9%** lub **🔔AP 9%**.
   Wzrost = czerwony (11), spadek = zielony (10). Dokładnie 8% nie generuje alertu.
 - W całym kalendarzu pozostaje **najwyżej jeden całodniowy alert dla kierunku i daty**:
   jeden PA i jeden AP na datę lotu. Nowy alert zastępuje poprzedni po potwierdzeniu

@@ -203,7 +203,7 @@ class DeliveryTests(unittest.TestCase):
         replacement = state["prices"][KEY]["event_id"]
         self.assertNotEqual(replacement, old_id)
         self.assertEqual(api.events[old_id]["status"], "cancelled")
-        self.assertEqual(api.events[replacement]["summary"], "PA 200.00")
+        self.assertEqual(api.events[replacement]["summary"], "PA 200")
         self.assertEqual(api.inserts, 1)
         # Simulate losing the Git acknowledgement after remote success.
         self.assertEqual(deliver(original, api, NOW), [])
@@ -401,7 +401,7 @@ class DeliveryTests(unittest.TestCase):
         state = plan(seeded(), 200)
         self.assertEqual(deliver(state, api, NOW), [])
         self.assertEqual(api.inserts, 0)
-        self.assertEqual(api.events["old"]["summary"], "PA 200.00")
+        self.assertEqual(api.events["old"]["summary"], "PA 200")
         # Legacy Google IDs need not be our 64-character hashes.
         again = plan(state, 200)
         with tempfile.TemporaryDirectory() as tmp:
