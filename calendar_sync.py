@@ -283,9 +283,53 @@ def keep_latest_alert(api, alerts, slot):
     return identifier
 
 
+def past_event_identity(event, today):
+    """Only unambiguous owned events for past flight dates are removable."""
+    if (not owned(event) or event.get("status") != "confirmed" or event.get("attendees")
+            or event.get("recurrence") or event.get("recurringEventId")):
+        return None
+    private = tags(event)
+    start, end = event.get("start") or {}, event.get("end") or {}
+    day = private.get("date")
+    # Older price events have an ownership marker but no separate flight-date tag.
+    if day is None and private["kind"] == "flight":
+        day = start.get("date")
+    try:
+        parsed = date.fromisoformat(day)
+    except (TypeError, ValueError):
+        return None
+    if parsed.isoformat() != day or parsed >= today:
+        return None
+    if private["kind"] in ("flight", "alert"):
+        if (start.get("date") != day or start.get("dateTime") or end.get("dateTime")
+                or end.get("date") != (parsed + timedelta(days=1)).isoformat()):
+            return None
+    else:
+        try:
+            begins = datetime.fromisoformat(start["dateTime"].replace("Z", "+00:00"))
+            ends = datetime.fromisoformat(end["dateTime"].replace("Z", "+00:00"))
+            if (not begins.tzinfo or not ends.tzinfo or begins >= ends
+                    or start.get("date") or end.get("date")
+                    or ends.astimezone(TZ) > datetime.combine(today, datetime.min.time(), TZ)):
+                return None
+        except (KeyError, AttributeError, TypeError, ValueError):
+            return None
+    return private["kind"], private["route"], day
+
+
 def deliver(state, api, now, persist=lambda: None, clock=None):
     """Verify new alerts before replacing previous ones; keep unfinished work pending."""
     errors = []
+    today = now.astimezone(TZ).date()
+    # Delivery may start after midnight even when its durable plan was staged yesterday.
+    prices = {key: record for key, record in state["prices"].items()
+              if date.fromisoformat(key.split(":")[1]) >= today}
+    outbox = {key: job for key, job in state["outbox"].items()
+              if date.fromisoformat(job["day"]) >= today}
+    if prices != state["prices"] or outbox != state["outbox"]:
+        state["prices"], state["outbox"] = prices, outbox
+        persist()
+    state["diagnostic"]["past_events_deleted"] = 0
     # Reconcile the whole owned calendar, including historical and distant flight dates.
     start = end = None
     try:
@@ -295,6 +339,21 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
     slots = {}
     alerts = {}
     for event in existing:
+        past = past_event_identity(event, today)
+        if past:
+            try:
+                prior = api.get(event["id"])
+                if prior and prior.get("status") != "cancelled":
+                    if past_event_identity(prior, today) != past:
+                        raise CalendarError("Past event changed; cleanup deferred")
+                    api.delete(event["id"])
+                    deleted = api.get(event["id"])
+                    if deleted and deleted.get("status") != "cancelled":
+                        raise CalendarError("Past event deletion not verified")
+                    state["diagnostic"]["past_events_deleted"] += 1
+            except CalendarError as exc:
+                errors.append(f"Past {past[0]} cleanup {past[1]}:{past[2]}: {exc}")
+            continue
         if not owned(event) or event.get("status") == "cancelled":
             continue
         private = tags(event)
