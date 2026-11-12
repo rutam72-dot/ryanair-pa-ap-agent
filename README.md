@@ -12,7 +12,13 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
 - Harmonogram: codziennie co godzinę, o minucie 07, Europe/Warsaw.
   GitHub może opóźniać lub pomijać uruchomienia; to nie monitoring czasu rzeczywistego.
 - Najbliższe 365 dni (od dziś do dziś + 365, włącznie).
-- Jedno wydarzenie całodniowe dla kierunku i daty. Tytuł **PA 218.50** lub **AP 218.50**.
+- Jedno wydarzenie całodniowe dla kierunku i daty. Tytuł **PA 219** lub **AP 219**.
+- Przy każdym przebiegu usuwane są własne wpisy cenowe i powiązane alerty oraz
+  zakończone powiadomienia dla dat lotów wcześniejszych niż dzisiaj w Europe/Warsaw.
+  Dzisiejsze i przyszłe daty pozostają. Agent zna datę lotu, nie potwierdza lądowania.
+  Przed usunięciem ponownie sprawdza własność i datę, a po nim potwierdza brak wpisu.
+  Wydarzenia obce, cykliczne, z uczestnikami lub niejednoznaczną datą są pomijane.
+  Błędy usunięcia są zgłaszane i ponawiane przy kolejnym przebiegu.
 - Kolory ceny: <300 zielony (10), 300–<500 żółty (5),
   500–<650 pomarańczowy (6), ≥650 czerwony (11).
 - Opis: (POZ)-(ALC) lub (ALC)-(POZ), data lotu, czas poprawnego odczytu w Warszawie,

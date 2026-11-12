@@ -3,7 +3,7 @@ import io
 import json
 import tempfile
 import unittest
-from datetime import date, timedelta
+from datetime import date, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError
 from unittest.mock import patch
@@ -93,8 +93,103 @@ class DeliveryTests(unittest.TestCase):
         api.events["personal"] = copy.deepcopy(foreign)
         self.assertEqual(deliver(seeded(), api, NOW), [])
         self.assertEqual(api.bounds, (None, None))
-        self.assertEqual(set(api.events), {"2020-01-01-1", "2035-01-01-1", "personal"})
+        self.assertEqual(set(api.events), {"2035-01-01-1", "personal"})
         self.assertEqual(api.events["personal"], foreign)
+
+    def test_past_flights_alerts_and_pushes_removed_but_today_and_future_kept(self):
+        api = FakeApi()
+        yesterday = (NOW.date() - timedelta(days=1)).isoformat()
+        for route in ("PA", "AP"):
+            for kind in ("flight", "alert", "push"):
+                identifier = f"past-{route}-{kind}"
+                event = self.alert(identifier, route=route, day=yesterday)
+                event["extendedProperties"]["private"]["kind"] = kind
+                if kind == "push":
+                    when = NOW - timedelta(days=1)
+                    event["start"] = {"dateTime": when.isoformat()}
+                    event["end"] = {"dateTime": (when + timedelta(minutes=1)).isoformat()}
+                if kind == "flight":
+                    event["extendedProperties"]["private"].pop("date")  # Legacy price entry.
+                api.events[identifier] = event
+        for day in (NOW.date().isoformat(), DAY):
+            api.events[day] = self.alert(day, day=day)
+        state = seeded()
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(set(api.events), {NOW.date().isoformat(), DAY})
+        self.assertEqual(state["diagnostic"]["past_events_deleted"], 6)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(state["diagnostic"]["past_events_deleted"], 0)
+        self.assertEqual(len(api.deleted), 6)
+
+    def test_past_cleanup_preserves_foreign_attendee_recurring_and_ambiguous_events(self):
+        api = FakeApi()
+        past = (NOW.date() - timedelta(days=1)).isoformat()
+        for identifier in ("foreign", "attendee", "recurring", "mismatch", "invalid", "future-push"):
+            event = self.alert(identifier, day=past)
+            private = event["extendedProperties"]["private"]
+            if identifier == "foreign":
+                event.pop("extendedProperties")
+            elif identifier == "attendee":
+                event["attendees"] = [{"email": "someone@example.com"}]
+            elif identifier == "recurring":
+                event["recurrence"] = ["RRULE:FREQ=DAILY"]
+            elif identifier == "mismatch":
+                private["date"] = "2020-01-01"
+            elif identifier == "invalid":
+                private["date"] = "invalid"
+            else:
+                private["kind"] = "push"
+                event["start"] = {"dateTime": NOW.isoformat()}
+                event["end"] = {"dateTime": (NOW + timedelta(minutes=1)).isoformat()}
+            api.events[identifier] = event
+        original = copy.deepcopy(api.events)
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(api.events, original)
+        self.assertEqual(api.deleted, [])
+
+    def test_failed_past_deletion_is_reported_and_retried(self):
+        api = FakeApi()
+        api.events["past"] = self.alert("past", day="2020-01-01")
+        api.fail_delete = True
+        self.assertTrue(deliver(seeded(), api, NOW))
+        self.assertIn("past", api.events)
+        api.fail_delete = False
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertNotIn("past", api.events)
+
+    def test_past_cleanup_rechecks_identity_and_verifies_deletion(self):
+        class ChangedApi(FakeApi):
+            def get(self, identifier):
+                event = super().get(identifier)
+                event["attendees"] = [{"email": "someone@example.com"}]
+                return event
+        class NoDeleteApi(FakeApi):
+            def delete(self, identifier):
+                pass
+        for api in (ChangedApi(), NoDeleteApi()):
+            api.events["past"] = self.alert("past", day="2020-01-01")
+            self.assertTrue(deliver(seeded(), api, NOW))
+            self.assertIn("past", api.events)
+
+    def test_delivery_after_midnight_drops_old_queue_without_recreating_events(self):
+        state = plan(seeded(), 240)
+        api = FakeApi()
+        next_day = NOW.replace(month=12, day=18, hour=0, minute=1)
+        persisted = []
+        self.assertEqual(deliver(state, api, next_day, persist=lambda: persisted.append(True)), [])
+        self.assertEqual(state["outbox"], {})
+        self.assertEqual(state["prices"], {})
+        self.assertTrue(persisted)
+        self.assertEqual(api.inserts, 0)
+
+    def test_past_cleanup_uses_warsaw_date_even_for_utc_clock(self):
+        api = FakeApi()
+        api.events["yesterday"] = self.alert("yesterday", day="2026-11-04")
+        api.events["today"] = self.alert("today", day="2026-11-05")
+        clock = NOW.replace(hour=0, minute=30).astimezone(timezone.utc)
+        self.assertEqual(clock.date().isoformat(), "2026-11-04")
+        self.assertEqual(deliver(seeded(), api, clock), [])
+        self.assertEqual(set(api.events), {"today"})
 
     def test_old_alert_preserved_until_new_alert_readback_succeeds(self):
         state = plan(seeded(), 218)
