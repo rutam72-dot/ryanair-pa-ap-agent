@@ -77,6 +77,117 @@ class DeliveryTests(unittest.TestCase):
             private.pop("observed_at")
         return {**body, "id": identifier, "status": "confirmed", "created": when.isoformat()}
 
+    def push(self, identifier, when, color="10"):
+        body = copy.deepcopy(next(j["body"] for j in plan(seeded(), 160)["outbox"].values()
+                                  if j["kind"] == "push"))
+        body.update(id=identifier, status="confirmed", colorId=color,
+                    start={"dateTime": when.isoformat()},
+                    end={"dateTime": (when + timedelta(minutes=1)).isoformat()})
+        return body
+
+    def test_expired_drop_and_legacy_increase_pushes_removed_for_future_flight_dates(self):
+        api = FakeApi()
+        for color in ("10", "11"):
+            api.events[color] = self.push(color, NOW - timedelta(minutes=20), color)
+        api.events["alert"] = self.alert("alert")
+        state = seeded()
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(set(api.events), {"alert"})
+        self.assertEqual(state["diagnostic"]["expired_pushes_deleted"], 2)
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertEqual(state["diagnostic"]["expired_pushes_deleted"], 0)
+        self.assertEqual(api.inserts, 0)
+
+    def test_push_cleanup_waits_ten_minutes_after_end_in_any_timezone(self):
+        api = FakeApi()
+        times = {"boundary": NOW - timedelta(minutes=11),
+                 "too-soon": NOW - timedelta(minutes=11) + timedelta(seconds=1),
+                 "just-finished": NOW - timedelta(minutes=1),
+                 "future": NOW + timedelta(minutes=5)}
+        for identifier, when in times.items():
+            api.events[identifier] = self.push(identifier, when.astimezone(timezone.utc))
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(set(api.events), set(times) - {"boundary"})
+
+    def test_expired_push_cleanup_preserves_unrelated_and_ambiguous_events(self):
+        api = FakeApi()
+        for identifier in ("foreign", "attendee", "recurring", "instance", "invalid-date",
+                           "missing-change", "naive", "all-day", "long-duration"):
+            event = self.push(identifier, NOW - timedelta(hours=1))
+            if identifier == "foreign":
+                event["extendedProperties"]["private"]["managed_by"] = "another-app"
+            elif identifier == "attendee":
+                event["attendees"] = [{"email": "someone@example.com"}]
+            elif identifier == "recurring":
+                event["recurrence"] = ["RRULE:FREQ=DAILY"]
+            elif identifier == "instance":
+                event["recurringEventId"] = "series"
+            elif identifier == "invalid-date":
+                event["extendedProperties"]["private"]["date"] = "invalid"
+            elif identifier == "missing-change":
+                event["extendedProperties"]["private"].pop("change_id")
+            elif identifier == "naive":
+                event["start"]["dateTime"] = "2026-11-05T10:00:00"
+            elif identifier == "all-day":
+                event["start"] = {"date": DAY}
+            else:
+                event["end"]["dateTime"] = (NOW + timedelta(days=1)).isoformat()
+            api.events[identifier] = event
+        original = copy.deepcopy(api.events)
+        self.assertEqual(deliver(seeded(), api, NOW), [])
+        self.assertEqual(api.events, original)
+        self.assertEqual(api.deleted, [])
+
+    def test_failed_expired_push_deletion_is_reported_and_retried(self):
+        api = FakeApi()
+        api.events["old-push"] = self.push("old-push", NOW - timedelta(hours=1))
+        api.fail_delete = True
+        state = seeded()
+        self.assertTrue(deliver(state, api, NOW))
+        self.assertIn("old-push", api.events)
+        self.assertEqual(state["diagnostic"]["expired_pushes_deleted"], 0)
+        api.fail_delete = False
+        self.assertEqual(deliver(state, api, NOW), [])
+        self.assertNotIn("old-push", api.events)
+        self.assertEqual(state["diagnostic"]["expired_pushes_deleted"], 1)
+
+    def test_expired_push_cleanup_rechecks_timing_and_verifies_deletion(self):
+        class RescheduledApi(FakeApi):
+            def get(self, identifier):
+                event = super().get(identifier)
+                event["start"] = {"dateTime": (NOW + timedelta(minutes=5)).isoformat()}
+                event["end"] = {"dateTime": (NOW + timedelta(minutes=6)).isoformat()}
+                return event
+        class NoDeleteApi(FakeApi):
+            def delete(self, identifier):
+                pass
+        for api in (RescheduledApi(), NoDeleteApi()):
+            api.events["old-push"] = self.push("old-push", NOW - timedelta(hours=1))
+            self.assertTrue(deliver(seeded(), api, NOW))
+            self.assertIn("old-push", api.events)
+
+    def test_expired_push_retirement_survives_replay_of_unacknowledged_plan(self):
+        class TombstoneApi(FakeApi):
+            def delete(self, identifier):
+                self.deleted.append(identifier)
+                self.events[identifier]["status"] = "cancelled"
+        original = plan(seeded(), 160)
+        api = TombstoneApi()
+        self.assertEqual(deliver(copy.deepcopy(original), api, NOW), [])
+        push_id = next(e["id"] for e in api.events.values()
+                       if e["extendedProperties"]["private"]["kind"] == "push")
+        restarted = copy.deepcopy(original)
+        persisted = []
+        later = NOW + timedelta(hours=2)
+        self.assertEqual(deliver(restarted, api, later,
+                                 persist=lambda: persisted.append(copy.deepcopy(restarted))), [])
+        self.assertTrue(persisted)
+        self.assertFalse(any(j["kind"] == "push" for j in persisted[0]["outbox"].values()))
+        self.assertEqual(api.events[push_id]["status"], "cancelled")
+        self.assertEqual(deliver(original, api, later), [])
+        self.assertEqual(api.inserts, 3)
+        self.assertFalse(original["outbox"])
+
     def test_existing_alerts_reduced_to_latest_for_each_route_and_date(self):
         api = FakeApi()
         for route in ("PA", "AP"):
@@ -457,7 +568,7 @@ class DeliveryTests(unittest.TestCase):
             path = Path(tmp) / "runtime.json"
             save_state(original, path)
             restored = load_state(path)
-            self.assertEqual(deliver(restored, api, NOW + timedelta(hours=2)), [])
+            self.assertEqual(deliver(restored, api, NOW + timedelta(minutes=2)), [])
         self.assertEqual(api.inserts, 3)
         push_after = api.events[push_before["id"]]
         self.assertEqual(push_before["start"], push_after["start"])

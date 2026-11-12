@@ -64,6 +64,13 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
   Podwyżki pozostają alertami w kalendarzu bez push. Zaległe niewysłane push
   o podwyżkach są odrzucane zarówno podczas planowania, jak i dostarczania.
   To konieczne: przypomnienie na dacie lotu nie powiadomiłoby o zmianie dziś.
+- Krótkie wpisy push są usuwane podczas kolejnego dostarczania, najwcześniej
+  10 minut po zakończeniu wpisu. Cena i alert na dacie lotu pozostają.
+  Czyszczenie obejmuje również stare powiadomienia o podwyżkach. Własność,
+  rodzaj i czas wpisu są sprawdzane przed usunięciem; cudze, cykliczne wpisy
+  i wydarzenia z uczestnikami są pomijane. Nie ponawiamy wygasłego push.
+  Przypomnienie jest zlecane Kalendarzowi Google; nie mamy potwierdzenia
+  odebrania go na telefonie. Diagnostyka podaje `expired_pushes_deleted`.
 - Nie ma rezerwacji, płatności, modeli AI, SMS, zewnętrznych usług push ani serwera.
 - Raz w tygodniu, od poniedziałku **04:07**: pełne odświeżenie cen i baz oraz
   usunięcie własnych alertów i krótkich wpisów push. Pierwszy przebieg jest bazowy.
