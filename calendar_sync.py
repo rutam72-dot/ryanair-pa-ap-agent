@@ -317,6 +317,28 @@ def past_event_identity(event, today):
     return private["kind"], private["route"], day
 
 
+def expired_push_identity(event, now):
+    """Recognize only owned, completed one-minute notification events."""
+    if (not owned(event) or tags(event)["kind"] != "push"
+            or event.get("status") != "confirmed" or event.get("attendees")
+            or event.get("recurrence") or event.get("recurringEventId")):
+        return None
+    private = tags(event)
+    start, end = event.get("start") or {}, event.get("end") or {}
+    try:
+        day = date.fromisoformat(private["date"])
+        begins = datetime.fromisoformat(start["dateTime"].replace("Z", "+00:00"))
+        ends = datetime.fromisoformat(end["dateTime"].replace("Z", "+00:00"))
+        if (day.isoformat() != private["date"] or not private.get("change_id")
+                or not begins.tzinfo or not ends.tzinfo or start.get("date") or end.get("date")
+                or ends - begins != timedelta(minutes=1)
+                or ends + timedelta(minutes=10) > now):
+            return None
+    except (KeyError, AttributeError, TypeError, ValueError):
+        return None
+    return private["route"], private["date"], private["change_id"], begins, ends
+
+
 def deliver(state, api, now, persist=lambda: None, clock=None):
     """Verify new alerts before replacing previous ones; keep unfinished work pending."""
     errors = []
@@ -332,6 +354,7 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
         state["prices"], state["outbox"] = prices, outbox
         persist()
     state["diagnostic"]["past_events_deleted"] = 0
+    state["diagnostic"]["expired_pushes_deleted"] = 0
     # Reconcile the whole owned calendar, including historical and distant flight dates.
     start = end = None
     try:
@@ -342,19 +365,34 @@ def deliver(state, api, now, persist=lambda: None, clock=None):
     alerts = {}
     for event in existing:
         past = past_event_identity(event, today)
-        if past:
+        expired = None if past else expired_push_identity(event, now)
+        if past or expired:
+            label = "Past event" if past else "Expired push"
             try:
                 prior = api.get(event["id"])
                 if prior and prior.get("status") != "cancelled":
-                    if past_event_identity(prior, today) != past:
-                        raise CalendarError("Past event changed; cleanup deferred")
+                    identity = (past_event_identity(prior, today) if past
+                                else expired_push_identity(prior, now))
+                    if identity != (past or expired):
+                        raise CalendarError(f"{label} changed; cleanup deferred")
+                if expired:
+                    # Publish retirement before deleting: a lost acknowledgement must
+                    # never recreate a completed notification with a new reminder time.
+                    pending = [key for key, job in state["outbox"].items()
+                               if job["kind"] == "push" and job["event_id"] == event["id"]]
+                    for key in pending:
+                        state["outbox"].pop(key)
+                    if pending:
+                        persist()
+                if prior and prior.get("status") != "cancelled":
                     api.delete(event["id"])
                     deleted = api.get(event["id"])
                     if deleted and deleted.get("status") != "cancelled":
-                        raise CalendarError("Past event deletion not verified")
-                    state["diagnostic"]["past_events_deleted"] += 1
+                        raise CalendarError(f"{label} deletion not verified")
+                    counter = "past_events_deleted" if past else "expired_pushes_deleted"
+                    state["diagnostic"][counter] += 1
             except CalendarError as exc:
-                errors.append(f"Past {past[0]} cleanup {past[1]}:{past[2]}: {exc}")
+                errors.append(f"{label} cleanup {event['id']}: {exc}")
             continue
         if not owned(event) or event.get("status") == "cancelled":
             continue
