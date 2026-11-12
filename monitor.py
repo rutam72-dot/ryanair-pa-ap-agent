@@ -216,9 +216,10 @@ def prepare(state, quotes, diagnostic, now):
     today = now.date().isoformat()
     state["prices"] = {k: v for k, v in state["prices"].items()
                        if k.split(":")[1] >= today}
-    # Never deliver a stale price-change push for a flight date already in the past.
+    # Drop expired jobs and legacy increase pushes; green is reserved for price drops.
     state["outbox"] = {k: v for k, v in state["outbox"].items()
-                       if v["day"] >= today}
+                       if v["day"] >= today
+                       and (v["kind"] != "push" or v["body"].get("colorId") == "10")}
     # An old pending price must never recreate a deleted entry without a fresh quote.
     state["outbox"] = {k: v for k, v in state["outbox"].items()
                        if v["kind"] != "flight" or f"{v['route']}:{v['day']}" in quotes}
@@ -256,7 +257,7 @@ def prepare(state, quotes, diagnostic, now):
                 }
                 state["outbox"][change] = {"kind": "alert", "route": route, "day": day,
                                            "event_id": event_id(change), "body": payload}
-                if percent >= PUSH_THRESHOLD:
+                if current < reference and percent >= PUSH_THRESHOLD:
                     push = copy.deepcopy(payload)
                     push["extendedProperties"] = metadata("push", route, day, change_id=change,
                                                         observed_at=quote["observed_at"])

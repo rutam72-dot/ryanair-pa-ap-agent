@@ -39,11 +39,27 @@ def plan(state, amount, complete=True):
     }, NOW)
 
 
+def legacy_increase_plan():
+    """Persisted increase push created by the policy before drops-only delivery."""
+    state = plan(seeded(), 240)
+    key, alert = next((k, j) for k, j in state["outbox"].items() if j["kind"] == "alert")
+    push = copy.deepcopy(alert)
+    push["kind"] = "push"
+    push["event_id"] = event_id(key + "-push")
+    push["body"]["extendedProperties"]["private"]["kind"] = "push"
+    push["body"].pop("start")
+    push["body"].pop("end")
+    push["body"]["reminders"] = {"useDefault": False,
+                                 "overrides": [{"method": "popup", "minutes": 0}]}
+    state["outbox"][key + "-push"] = push
+    return state
+
+
 class DomainTests(unittest.TestCase):
     def test_new_qualifying_change_supersedes_pending_alert_and_push_for_same_slot(self):
-        old = plan(seeded(), 240)
+        old = plan(seeded(), 160)
         old_ids = {j["event_id"] for j in old["outbox"].values() if j["kind"] != "flight"}
-        new = plan(old, 270)
+        new = plan(old, 180)
         alerts = [j for j in new["outbox"].values() if j["kind"] == "alert"]
         self.assertEqual(len(alerts), 1)
         self.assertFalse(any(j["event_id"] in old_ids for j in new["outbox"].values()))
@@ -123,13 +139,30 @@ class DomainTests(unittest.TestCase):
             self.assertEqual(state["prices"][KEY]["price"], amount)
             self.assertEqual(state["prices"][KEY]["reference"], amount)
 
-    def test_push_at_twenty_both_directions_and_not_below(self):
-        for amount in (240, 160):
+    def test_push_only_for_drop_at_least_twenty_percent_in_both_routes(self):
+        for route in ("PA", "AP"):
+            key = route + ":" + DAY
+            for amount, push_expected in ((160, True), (159, True), ("160.01", False),
+                                          (240, False), (300, False)):
+                with self.subTest(route=route, amount=amount):
+                    initial = seeded()
+                    initial["prices"][key] = initial["prices"].pop(KEY)
+                    state = prepare(initial, {key: quotes(amount)[KEY]},
+                                    {"expected": 1, "read": 1, "errors": []}, NOW)
+                    kinds = sorted(j["kind"] for j in state["outbox"].values())
+                    self.assertEqual(kinds, ["alert", "flight", "push"] if push_expected
+                                     else ["alert", "flight"])
+                    self.assertEqual(state["prices"][key]["reference"], str(amount))
+
+    def test_prepare_retires_legacy_increase_push_even_without_fresh_quote(self):
+        state = legacy_increase_plan()
+        state = prepare(state, {}, {"expected": 1, "read": 0, "errors": []}, NOW)
+        self.assertEqual([j["kind"] for j in state["outbox"].values()], ["alert"])
+
+    def test_push_below_threshold_uses_exact_unrounded_drop(self):
+        for amount in ("160.01", "160.49"):
             state = plan(seeded(), amount)
-            self.assertEqual(sorted(j["kind"] for j in state["outbox"].values()),
-                             ["alert", "flight", "push"])
-        state = plan(seeded(), "239.99")
-        self.assertFalse(any(j["kind"] == "push" for j in state["outbox"].values()))
+            self.assertFalse(any(j["kind"] == "push" for j in state["outbox"].values()))
 
     def test_cumulative_changes_compare_to_last_alert(self):
         state = plan(seeded(), 210)
@@ -187,7 +220,7 @@ class DomainTests(unittest.TestCase):
         self.assertEqual(result["outbox"], {})
 
     def test_past_undelivered_push_expires(self):
-        state = plan(seeded(), 240)
+        state = plan(seeded(), 160)
         for job in state["outbox"].values():
             job["day"] = "2026-11-04"
         state = prepare(state, {}, {"complete": False}, NOW)

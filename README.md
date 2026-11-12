@@ -59,8 +59,10 @@ Push gałęzi prepare/simple-free-* uruchamia testy i podgląd Ryanair bez sekre
 - Próg liczymy od ceny ostatniego wygenerowanego alertu, a po resecie tygodniowym
   od ceny bazowej; pierwsza obserwacja nowej daty ustanawia bazę bez alertu.
   Przykład: 200→210→218 = alert +9%; dalsze porównania do 218.
-- Przy zmianie **≥20%** powstaje też krótki wpis powiadomienia na teraz +5 minut
+- Tylko przy **obniżce ≥20%** powstaje też krótki wpis powiadomienia na teraz +5 minut
   z przypomnieniem popup w chwili rozpoczęcia. All-day alert zostaje na dacie lotu.
+  Podwyżki pozostają alertami w kalendarzu bez push. Zaległe niewysłane push
+  o podwyżkach są odrzucane zarówno podczas planowania, jak i dostarczania.
   To konieczne: przypomnienie na dacie lotu nie powiadomiłoby o zmianie dziś.
 - Nie ma rezerwacji, płatności, modeli AI, SMS, zewnętrznych usług push ani serwera.
 - Raz w tygodniu, od poniedziałku **04:07**: pełne odświeżenie cen i baz oraz
