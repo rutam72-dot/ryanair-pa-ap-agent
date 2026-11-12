@@ -1,6 +1,7 @@
 """Single-calendar OAuth adapter and restart-safe delivery. Standard library only."""
 import json
 import os
+import random
 import re
 import time
 from datetime import date, datetime, timedelta
@@ -9,6 +10,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
 from monitor import CALENDAR, MARKER, ROUTES, TZ, event_id
+from request_limits import RequestPacer
 
 
 class CalendarError(RuntimeError):
@@ -18,12 +20,16 @@ class CalendarError(RuntimeError):
 
 
 class GoogleCalendarApi:
-    def __init__(self, client_id, client_secret, refresh_token, opener=urlopen):
+    def __init__(self, client_id, client_secret, refresh_token, opener=urlopen,
+                 pacer=None, sleep=time.sleep):
         self.credentials = {"client_id": client_id, "client_secret": client_secret,
                             "refresh_token": refresh_token, "grant_type": "refresh_token"}
         self.opener = opener
         self.token = None
         self.expires = 0
+        # 300 weighted units/minute, below the documented 600/user/minute.
+        self.pacer = pacer if pacer is not None else RequestPacer(5)
+        self.sleep = sleep
 
     @classmethod
     def from_environment(cls):
@@ -43,6 +49,16 @@ class GoogleCalendarApi:
                 data = json.load(response)
             self.token = data["access_token"]
             self.expires = time.monotonic() + max(1, int(data.get("expires_in", 3600)) - 60)
+        except HTTPError as exc:
+            # Only emit a small allowlist of error codes, never a response body,
+            # error_description, token, client ID, or client secret.
+            try:
+                code = json.load(exc).get("error")
+            except (OSError, ValueError, AttributeError):
+                code = None
+            safe = code if code in {"invalid_grant", "invalid_client", "deleted_client",
+                                    "temporarily_unavailable", "server_error"} else "unknown"
+            raise CalendarError(f"Google OAuth refresh failed ({safe}, HTTP {exc.code})") from None
         except (OSError, ValueError, KeyError) as exc:
             raise CalendarError("Google OAuth refresh failed") from exc
 
@@ -65,6 +81,7 @@ class GoogleCalendarApi:
                 "Authorization": "Bearer " + self.token,
                 "Content-Type": "application/json; charset=utf-8", "Accept": "application/json"})
             try:
+                self.pacer.wait(3 if method == "PATCH" else 1)
                 with self.opener(req, timeout=30) as response:
                     raw = response.read()
                 return json.loads(raw) if raw else {}
@@ -73,8 +90,23 @@ class GoogleCalendarApi:
                     self.token = None
                     refreshed = True
                     continue
-                if exc.code in (429, 500, 502, 503, 504) and attempt < 3 and method != "POST":
-                    time.sleep(2 ** attempt)
+                rate_limited = exc.code == 429
+                if exc.code == 403:
+                    try:
+                        details = json.load(exc).get("error", {}).get("errors", [])
+                        rate_limited = any(e.get("reason") in
+                                           {"rateLimitExceeded", "userRateLimitExceeded"}
+                                           for e in details)
+                    except (OSError, ValueError, AttributeError, TypeError):
+                        pass
+                if (rate_limited or exc.code in (500, 502, 503, 504)) and attempt < 3 and method != "POST":
+                    try:
+                        retry_after = max(0, float(exc.headers.get("Retry-After", "0")))
+                    except (ValueError, AttributeError):
+                        retry_after = 0
+                    if retry_after > 60:
+                        raise CalendarError("Google Calendar cooldown exceeds retry budget; queue preserved", exc.code) from None
+                    self.sleep(max(retry_after, 2 ** attempt + random.random()))
                     continue
                 raise CalendarError(f"Google Calendar HTTP {exc.code} ({method})", exc.code) from exc
             except (URLError, OSError, ValueError) as exc:
